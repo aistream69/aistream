@@ -1,5 +1,5 @@
 # aistream
-aistream视频云平台
+Everything is a plugin
 ****
 
 ## 特性
@@ -7,7 +7,7 @@ aistream视频云平台
     * Restful API + json
 * [输入](#文本)
     * 支持任何格式数据输入，视频、图片、音频、文本等
-    * 支持rtsp，rtmp，gb28181，gat1400，hik/dahua sdk，ftp等
+    * 支持rtsp，rtmp，websocket，gb28181，gat1400，hik/dahua sdk，ftp等
     * 支持互联网数据接入
 * [输出](#文本)
     * 结构化数据，RabbitMQ/Kafka + json
