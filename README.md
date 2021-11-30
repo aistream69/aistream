@@ -1,5 +1,5 @@
 # aistream
-Everything is a plugin
+为算法工程化而生
 ****
 
 ## 特性
@@ -13,7 +13,7 @@ Everything is a plugin
     * 结构化数据，RabbitMQ/Kafka + json
 * [算法](#文本)
     * 开箱即用，丰富的深度学习模型库，detector/tracker/classifier等，涉及人脸，姿态，声音，车辆，性别，年龄等
-    * 支持用户算法模型导入，支持用户动态库函数模型导入，基于json的简单配置
+    * 支持用户算法模型导入，支持用户动态库函数模型导入，基于json的简单配置，pipeline机制
     * 支持多模型融合及pipeline
 * [视频预览](#文本)
     * 支持hls/http-flv
