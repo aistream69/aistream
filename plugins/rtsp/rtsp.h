@@ -16,22 +16,20 @@
  *
  ******************************************************************************/
 
-#ifndef __AISTREAM_OBJ_H__
-#define __AISTREAM_OBJ_H__
+#ifndef __AISTREAM_RTSP_H__
+#define __AISTREAM_RTSP_H__
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "task.h"
+#include "obj.h"
 
-class MediaServer;
-class ObjParams {
+class RtspParams : public ObjParams {
 public:
-    ObjParams(MediaServer* _media);
-    ~ObjParams(void);
+    RtspParams(void);
+    ~RtspParams(void);
 private:
-    MediaServer* media;
-    TaskParams task;
+    char url[256];
 };
 
 #endif

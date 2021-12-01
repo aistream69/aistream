@@ -16,23 +16,14 @@
  *
  ******************************************************************************/
 
-#ifndef __AISTREAM_OBJ_H__
-#define __AISTREAM_OBJ_H__
+#include "stream.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include "task.h"
+Restful::Restful(MediaServer* _media)
+  : media(_media) {
+    AppDebug("##test");
+}
 
-class MediaServer;
-class ObjParams {
-public:
-    ObjParams(MediaServer* _media);
-    ~ObjParams(void);
-private:
-    MediaServer* media;
-    TaskParams task;
-};
-
-#endif
+Restful::~Restful(void) {
+    AppDebug("##test");
+}
 

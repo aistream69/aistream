@@ -16,22 +16,18 @@
  *
  ******************************************************************************/
 
-#ifndef __AISTREAM_OBJ_H__
-#define __AISTREAM_OBJ_H__
+#ifndef __AISTREAM_SYSTEM_H__
+#define __AISTREAM_SYSTEM_H__
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "task.h"
 
-class MediaServer;
-class ObjParams {
+class SystemParams {
 public:
-    ObjParams(MediaServer* _media);
-    ~ObjParams(void);
+    SystemParams(void);
+    ~SystemParams(void);
 private:
-    MediaServer* media;
-    TaskParams task;
 };
 
 #endif

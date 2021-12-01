@@ -16,22 +16,20 @@
  *
  ******************************************************************************/
 
-#ifndef __AISTREAM_OBJ_H__
-#define __AISTREAM_OBJ_H__
+#ifndef __AISTREAM_PIPELINE_H__
+#define __AISTREAM_PIPELINE_H__
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "task.h"
 
 class MediaServer;
-class ObjParams {
+class Pipeline {
 public:
-    ObjParams(MediaServer* _media);
-    ~ObjParams(void);
+    Pipeline(MediaServer* _media);
+    ~Pipeline(void);
 private:
     MediaServer* media;
-    TaskParams task;
 };
 
 #endif

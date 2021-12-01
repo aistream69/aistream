@@ -14,9 +14,9 @@
 * [算法](#文本)
     * 开箱即用，丰富的深度学习模型库，detector/tracker/classifier等，涉及人脸，姿态，声音，车辆，性别，年龄等
     * 支持用户算法模型导入，支持用户动态库函数模型导入，基于json的简单配置，pipeline机制
-    * 支持多模型融合及pipeline
+    * 支持多模型融合pipeline
 * [视频预览](#文本)
-    * 支持hls/http-flv
+    * 支持hls/http-flv/webrtc
 * [集群](#文本)
     * 支持master/slave模式，自动负载均衡，无限扩展
     * 每个slave支持GPU一机多卡

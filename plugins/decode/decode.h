@@ -16,22 +16,19 @@
  *
  ******************************************************************************/
 
-#ifndef __AISTREAM_OBJ_H__
-#define __AISTREAM_OBJ_H__
+#ifndef __AISTREAM_DECODE_H__
+#define __AISTREAM_DECODE_H__
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "task.h"
 
-class MediaServer;
-class ObjParams {
+class DecodeParams {
 public:
-    ObjParams(MediaServer* _media);
-    ~ObjParams(void);
+    DecodeParams(void);
+    ~DecodeParams(void);
 private:
-    MediaServer* media;
-    TaskParams task;
+    long int frameid;
 };
 
 #endif

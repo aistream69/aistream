@@ -16,22 +16,20 @@
  *
  ******************************************************************************/
 
-#ifndef __AISTREAM_OBJ_H__
-#define __AISTREAM_OBJ_H__
+#ifndef __AISTREAM_REST_H__
+#define __AISTREAM_REST_H__
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "task.h"
 
 class MediaServer;
-class ObjParams {
+class Restful {
 public:
-    ObjParams(MediaServer* _media);
-    ~ObjParams(void);
+    Restful(MediaServer* _media);
+    ~Restful(void);
 private:
     MediaServer* media;
-    TaskParams task;
 };
 
 #endif

@@ -16,23 +16,14 @@
  *
  ******************************************************************************/
 
-#ifndef __AISTREAM_OBJ_H__
-#define __AISTREAM_OBJ_H__
+#ifndef __AISTREAM_SHARE_H__
+#define __AISTREAM_SHARE_H__
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "task.h"
 
-class MediaServer;
-class ObjParams {
-public:
-    ObjParams(MediaServer* _media);
-    ~ObjParams(void);
-private:
-    MediaServer* media;
-    TaskParams task;
-};
+int DirCheck(const char *dir);
 
 #endif
 

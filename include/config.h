@@ -16,22 +16,22 @@
  *
  ******************************************************************************/
 
-#ifndef __AISTREAM_OBJ_H__
-#define __AISTREAM_OBJ_H__
+#ifndef __AISTREAM_CONFIG_H__
+#define __AISTREAM_CONFIG_H__
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "task.h"
+
+#define CONFIG_FILE     "cfg/config.json"
 
 class MediaServer;
-class ObjParams {
+class ConfigParams {
 public:
-    ObjParams(MediaServer* _media);
-    ~ObjParams(void);
+    ConfigParams(MediaServer* _media);
+    ~ConfigParams(void);
 private:
     MediaServer* media;
-    TaskParams task;
 };
 
 #endif

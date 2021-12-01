@@ -16,23 +16,14 @@
  *
  ******************************************************************************/
 
-#ifndef __AISTREAM_OBJ_H__
-#define __AISTREAM_OBJ_H__
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include "task.h"
+#include "stream.h"
 
-class MediaServer;
-class ObjParams {
-public:
-    ObjParams(MediaServer* _media);
-    ~ObjParams(void);
-private:
-    MediaServer* media;
-    TaskParams task;
-};
+TaskParams::TaskParams(void) {
+    AppDebug("##test");
+}
 
-#endif
+TaskParams::~TaskParams(void) {
+    AppDebug("##test");
+}
 
