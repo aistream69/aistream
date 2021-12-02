@@ -30,7 +30,15 @@ class ConfigParams {
 public:
     ConfigParams(MediaServer* _media);
     ~ConfigParams(void);
+    bool Read(const char *cfg);
+    bool MasterEnable(void) {return master_enable != 0;}
+    bool SlaveEnable(void) {return slave_enable != 0;}
 private:
+    int master_enable;
+    int slave_enable;
+    int master_rest_port;
+    int slave_rest_port;
+    int obj_max;
     MediaServer* media;
 };
 

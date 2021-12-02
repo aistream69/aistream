@@ -1,0 +1,13 @@
+{
+    "master": {
+        "enable": 0,
+        "rest_port": 11706
+    },
+    "slave": {
+        "enable": 1,
+        "rest_port": 15515
+    },
+    "system": {
+        "obj_max": 10000
+    }
+}

@@ -17,13 +17,18 @@
  ******************************************************************************/
 
 #include "stream.h"
+#include "rest.h"
 
-Restful::Restful(MediaServer* _media)
+Restful::Restful(MediaServer *_media)
   : media(_media) {
     AppDebug("##test");
 }
 
 Restful::~Restful(void) {
+    AppDebug("##test");
+}
+
+void Restful::start(void) {
     AppDebug("##test");
 }
 

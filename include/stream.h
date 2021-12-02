@@ -27,6 +27,8 @@
 #include "master.h"
 #include "slave.h"
 #include "config.h"
+#include "db.h"
+#include "obj.h"
 #include "rest.h"
 #include "pipeline.h"
 #include "db.h"
@@ -36,6 +38,7 @@
 #include "share.h"
 #include "log.h"
 
+#define CONFIG_FILE     "cfg/config.json"
 #define SW_VERSION      "V0.01.2021112201"
 
 class MediaServer {
@@ -49,10 +52,7 @@ public:
 private:
     MasterParams*   master;
     SlaveParams*    slave;
-    Restful*        rest;
-    Pipeline*       pipe;
     DbParams*       db;
-    OutputParams*   output;
 };
 
 #endif

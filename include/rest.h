@@ -22,15 +22,43 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+/*
+#include <event2/event.h>
+#include <event2/http.h>
+#include <event2/buffer.h>
+#include <event2/util.h>
+#include <event2/keyvalq_struct.h>
+#include <event2/dns.h>
+*/
 
 class MediaServer;
 class Restful {
 public:
     Restful(MediaServer* _media);
     ~Restful(void);
+    void start(void);
+    virtual void test(void){}
 private:
     MediaServer* media;
 };
+
+class MasterRestful : public Restful {
+public:
+    MasterRestful(MediaServer* media):Restful(media){}
+    virtual void test(void);
+};
+
+class SlaveRestful : public Restful {
+public:
+    SlaveRestful(MediaServer* media):Restful(media){}
+    virtual void test(void);
+};
+
+typedef struct {
+    const char *url;
+    //void (*cb)(struct evhttp_request *, void *);
+    void *arg;
+} UrlMap;
 
 #endif
 

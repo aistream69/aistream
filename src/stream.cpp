@@ -18,7 +18,7 @@
 
 #include "stream.h"
 
-/*
+/* TODO:
  * init sub class : restful, pipeline, config, output, system, master, slave, objs, db etc.
  * use std::list std::vector as more as possible
  * dynamic data use shared_ptr, for example queue/list etc.
@@ -31,24 +31,26 @@
  * */
 MediaServer::MediaServer(void) {
     running = 1;
-    DirCheck("log");
-    AppDebug("Built: %s %s, version:%s, aistream starting ...", __TIME__, __DATE__, SW_VERSION);
     config = new ConfigParams(this);
-    master = new MasterParams(this);
-    slave = new SlaveParams(this);
-    rest = new Restful(this);
-    pipe = new Pipeline(this);
-    db = new DbParams(this);
-    output = new OutputParams(this);
     objs = new ObjParams(this);
+    db = new DbParams(this);
 }
 
 MediaServer::~MediaServer(void) {
 }
 
 void MediaServer::run(void) {
-    while(running) {
-        sleep(2);
+    bool ret;
+    ret = config->Read(CONFIG_FILE);
+    assert(ret == true);
+    AppDebug("master_enable:%d, slave_enable:%d", config->MasterEnable(), config->SlaveEnable());
+    if(config->MasterEnable()) {
+        master = new MasterParams(this);
+        master->start();
+    }
+    if(config->SlaveEnable()) {
+        slave = new SlaveParams(this);
+        slave->start();
     }
 }
 

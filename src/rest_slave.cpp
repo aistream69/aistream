@@ -16,34 +16,10 @@
  *
  ******************************************************************************/
 
-#include "stream.h"
+#include "rest.h"
+#include "log.h"
 
-ConfigParams::ConfigParams(MediaServer* _media)
-  : media(_media) {
-    AppDebug("##test");
-}
-
-ConfigParams::~ConfigParams(void) {
-    AppDebug("##test");
-}
-
-bool ConfigParams::Read(const char *cfg) {
-    int ret = false;
-    char *buf = ReadFile2Buf(cfg);
-    if(buf == NULL) {
-        AppWarning("%s, ReadFile2Buf failed", cfg);
-        goto end;
-    }
-    master_enable = GetIntValFromJson(buf, "master", "enable");
-    slave_enable = GetIntValFromJson(buf, "slave", "enable");
-    master_rest_port = GetIntValFromJson(buf, "master", "rest_port");
-    slave_rest_port = GetIntValFromJson(buf, "slave", "rest_port");
-    obj_max = GetIntValFromJson(buf, "system", "obj_max");
-    ret = true;
-end:
-    if(buf != NULL) {
-        free(buf);
-    }
-    return ret;
+void SlaveRestful::test(void) {
+    AppDebug();
 }
 

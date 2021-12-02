@@ -17,13 +17,21 @@
  ******************************************************************************/
 
 #include "stream.h"
+#include "rest.h"
 
 SlaveParams::SlaveParams(MediaServer* _media)
   : media(_media) {
     AppDebug("##test");
+    pipe = new Pipeline(media);
+    output = new OutputParams(media);
 }
 
 SlaveParams::~SlaveParams(void) {
     AppDebug("##test");
+}
+
+void SlaveParams::start(void) {
+    SlaveRestful* rest = new SlaveRestful(media);
+    rest->start();
 }
 

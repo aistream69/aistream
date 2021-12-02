@@ -28,6 +28,7 @@ class MasterParams {
 public:
     MasterParams(MediaServer* _media);
     ~MasterParams(void);
+    void start(void);
 private:
     MediaServer* media;
 };

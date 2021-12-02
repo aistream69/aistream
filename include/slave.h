@@ -22,14 +22,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "pipeline.h"
+#include "output.h"
 
 class MediaServer;
 class SlaveParams {
 public:
     SlaveParams(MediaServer* _media);
     ~SlaveParams(void);
+    void start(void);
 private:
-    MediaServer* media;
+    Pipeline*       pipe;
+    OutputParams*   output;
+    MediaServer*    media;
 };
 
 #endif

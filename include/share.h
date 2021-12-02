@@ -24,6 +24,10 @@
 #include <string.h>
 
 int DirCheck(const char *dir);
+char *ReadFile2Buf(const char *filename);
+int ReadFile(const char *filename, void *buf, int size);
+int ReadFile2(const char *filename, void *buf, int max);
+int GetIntValFromJson(char *buf, const char *name1, const char *name2=NULL, const char *name3=NULL);
 
 #endif
 

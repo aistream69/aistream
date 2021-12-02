@@ -43,6 +43,7 @@
 #include <sys/sysinfo.h>
 #include <ctype.h>
 #include <execinfo.h>
+#include "cJSON.h"
 #include "log.h"
 
 static int CreateDir(const char *path) {
@@ -76,5 +77,106 @@ int DirCheck(const char *dir) {
         return CreateDir(dir);
     else
         return closedir(pdir);   
+}
+
+char *ReadFile2Buf(const char *filename) {
+    int size;
+    char *buf = NULL;
+    FILE *fp = fopen(filename, "rb");
+    if(fp == NULL) {
+        AppError("fopen %s failed", filename);
+        goto end;
+    }
+    fseek(fp, 0L, SEEK_END);
+    size = ftell(fp);
+    fseek(fp, 0L, SEEK_SET);
+    buf = (char *)malloc(size+1);
+    if(buf == NULL) {
+        AppError("malloc %d failed", size);
+        goto end;
+    }
+    memset(buf, 0, size+1);
+    if(fread(buf, 1, size, fp)){
+    }
+end:
+    if(fp != NULL) {
+        fclose(fp);
+    }
+    return buf;
+}
+
+int ReadFile(const char *filename, void *buf, int size) {
+    FILE *fp = fopen(filename, "rb");
+    if(fp == NULL) {
+        AppError("fopen %s failed", filename);
+        return -1;
+    }
+    int n = fread(buf, 1, size, fp);
+    fclose(fp);
+    return n;
+}
+
+int ReadFile2(const char *filename, void *buf, int max) {
+    struct stat f_stat;
+    FILE *fp = fopen(filename, "rb");
+    if(fp == NULL) {
+        AppError("fopen %s failed", filename);
+        return -1;
+    }
+    if(stat(filename, &f_stat) == 0) {
+        if(f_stat.st_size > max) {
+            return -1;
+        }
+    }
+    int n = fread(buf, 1, f_stat.st_size, fp);
+    fclose(fp);
+    return n;
+}
+
+int GetIntValFromJson(char *buf, const char *name1, const char *name2, const char *name3) {
+    char name[256];
+    int val = -1;
+    cJSON *root, *pSub1, *pSub2, *pSub3;
+    root = cJSON_Parse(buf);
+    if(root == NULL) {
+        AppError("cJSON_Parse err, buf:%s", buf);
+        goto end;
+    }
+    if(name1 == NULL) {
+        AppError("name1 is null");
+        goto end;
+    }
+    strncpy(name, name1, 256);
+    pSub1 = cJSON_GetObjectItem(root, name);
+    if(pSub1 == NULL) {
+        printf("get json null, %s\n", name);
+        goto end;
+    }
+    if(name2 == NULL) {
+        val = pSub1->valueint;
+        goto end;
+    }
+    strncpy(name, name2, 256);
+    pSub2 = cJSON_GetObjectItem(pSub1, name);
+    if(pSub2 == NULL) {
+        printf("get json null, %s\n", name);
+        goto end;
+    }
+    if(name3 == NULL) {
+        val = pSub2->valueint;
+        goto end;
+    }
+    strncpy(name, name3, 256);
+    pSub3 = cJSON_GetObjectItem(pSub2, name);
+    if(pSub3 == NULL) {
+        printf("get json null, %s\n", name);
+        goto end;
+    }
+    val = pSub3->valueint;
+end:
+    if(root != NULL) {
+        cJSON_Delete(root);
+    }
+    return val;
 }
 
