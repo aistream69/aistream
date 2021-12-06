@@ -23,7 +23,17 @@
 #include <stdlib.h>
 #include <string.h>
 
+typedef struct {
+    void *arga;
+    void *argb;
+    void *argc;
+    void *argd;
+    void *arge;
+    int  val;
+} CommonParams;
+
 int DirCheck(const char *dir);
+int GetLocalIp(char host_ip[128]);
 char *ReadFile2Buf(const char *filename);
 int ReadFile(const char *filename, void *buf, int size);
 int ReadFile2(const char *filename, void *buf, int max);

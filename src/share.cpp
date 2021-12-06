@@ -79,6 +79,52 @@ int DirCheck(const char *dir) {
         return closedir(pdir);   
 }
 
+int GetLocalIp(char host_ip[128]) {
+    int sock;
+    struct ifconf conf;
+    struct ifreq *ifr;
+    char buff[BUFSIZ];
+    int num;
+    int i;
+    unsigned int u32_addr = 0;
+    char str_ip[16] = {0};
+
+    sock = socket(PF_INET, SOCK_DGRAM, 0);
+    conf.ifc_len = BUFSIZ;
+    conf.ifc_buf = buff;
+    ioctl(sock, SIOCGIFCONF, &conf);
+    num = conf.ifc_len / sizeof(struct ifreq);
+    ifr = conf.ifc_req;
+
+    for (i = 0; i < num; i++) {
+        ioctl(sock, SIOCGIFFLAGS, ifr);
+        u32_addr = ((struct sockaddr_in *)&ifr->ifr_addr)->sin_addr.s_addr;
+
+        if (((ifr->ifr_flags & IFF_LOOPBACK) == 0) && (ifr->ifr_flags & IFF_UP)) {
+            if(strstr(ifr->ifr_name,"docker") || 
+                    strstr(ifr->ifr_name,"cicada") ||
+                    strstr(ifr->ifr_name,":")) {
+                continue;
+            }
+
+            inet_ntop(AF_INET, &u32_addr, str_ip, (socklen_t )sizeof(str_ip));
+
+            if(strstr(ifr->ifr_name,"eth")||strstr(ifr->ifr_name,"em") ) {
+                break;
+            }
+        }
+        ifr++;
+    }
+
+    if(str_ip == NULL) {
+        printf("str_ip is NULL\n");
+        return -1;
+    }
+    strncpy(host_ip, str_ip, 128);
+
+    return 0;
+}
+
 char *ReadFile2Buf(const char *filename) {
     int size;
     char *buf = NULL;

@@ -20,10 +20,8 @@
 
 DbParams::DbParams(MediaServer* _media)
   : media(_media) {
-    AppDebug("##test");
 }
 
 DbParams::~DbParams(void) {
-    AppDebug("##test");
 }
 

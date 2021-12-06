@@ -21,10 +21,8 @@
 
 ObjParams::ObjParams(MediaServer* _media)
   : media(_media) {
-    AppDebug("##test");
 }
 
 ObjParams::~ObjParams(void) {
-    AppDebug("##test");
 }
 

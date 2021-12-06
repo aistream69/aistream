@@ -20,10 +20,8 @@
 
 Pipeline::Pipeline(MediaServer* _media)
   : media(_media) {
-    AppDebug("##test");
 }
 
 Pipeline::~Pipeline(void) {
-    AppDebug("##test");
 }
 

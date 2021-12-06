@@ -43,14 +43,20 @@ void MediaServer::run(void) {
     bool ret;
     ret = config->Read(CONFIG_FILE);
     assert(ret == true);
-    AppDebug("master_enable:%d, slave_enable:%d", config->MasterEnable(), config->SlaveEnable());
-    if(config->MasterEnable()) {
+    AppDebug("master_enable:%d, slave_enable:%d", config->master_enable, config->slave_enable);
+    if(config->master_enable) {
         master = new MasterParams(this);
         master->start();
     }
-    if(config->SlaveEnable()) {
+    if(config->slave_enable) {
         slave = new SlaveParams(this);
         slave->start();
+    }
+    while(running) {
+        if(!access("aistream.stop", F_OK)) {
+            break;
+        }
+        sleep(2);
     }
 }
 

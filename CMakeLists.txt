@@ -14,3 +14,5 @@ set(CMAKE_VERBOSE_MAKEFILE ON)
 add_subdirectory(src)
 add_subdirectory(work/cjson)
 
+include(cmake/libevent.cmake)
+

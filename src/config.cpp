@@ -20,11 +20,9 @@
 
 ConfigParams::ConfigParams(MediaServer* _media)
   : media(_media) {
-    AppDebug("##test");
 }
 
 ConfigParams::~ConfigParams(void) {
-    AppDebug("##test");
 }
 
 bool ConfigParams::Read(const char *cfg) {
@@ -39,6 +37,7 @@ bool ConfigParams::Read(const char *cfg) {
     master_rest_port = GetIntValFromJson(buf, "master", "rest_port");
     slave_rest_port = GetIntValFromJson(buf, "slave", "rest_port");
     obj_max = GetIntValFromJson(buf, "system", "obj_max");
+    GetLocalIp(local_ip);
     ret = true;
 end:
     if(buf != NULL) {

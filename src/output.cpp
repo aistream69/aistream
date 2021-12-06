@@ -20,10 +20,8 @@
 
 OutputParams::OutputParams(MediaServer* _media)
   : media(_media) {
-    AppDebug("##test");
 }
 
 OutputParams::~OutputParams(void) {
-    AppDebug("##test");
 }
 

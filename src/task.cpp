@@ -20,10 +20,8 @@
 #include "stream.h"
 
 TaskParams::TaskParams(void) {
-    AppDebug("##test");
 }
 
 TaskParams::~TaskParams(void) {
-    AppDebug("##test");
 }
 

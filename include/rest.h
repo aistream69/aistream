@@ -22,14 +22,34 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-/*
 #include <event2/event.h>
 #include <event2/http.h>
 #include <event2/buffer.h>
 #include <event2/util.h>
 #include <event2/keyvalq_struct.h>
 #include <event2/dns.h>
-*/
+#include "log.h"
+
+#define POST_BUF_MAX    1024
+
+typedef struct {
+    const char *url;
+    void (*cb)(struct evhttp_request *, void *);
+    void *arg;
+} UrlMap;
+
+#define request_first_stage                         \
+do {                                                \
+    if(req == NULL) {                               \
+        AppWarning("req is null");                 \
+        return ;                                    \
+    }                                               \
+    if(req != (struct evhttp_request *)(-1)) {      \
+        UrlMap *p = (UrlMap *)arg;                  \
+        request_cb(req, p->cb, p->arg);             \
+        return ;                                    \
+    }                                               \
+} while(0)
 
 class MediaServer;
 class Restful {
@@ -37,28 +57,32 @@ public:
     Restful(MediaServer* _media);
     ~Restful(void);
     void start(void);
-    virtual void test(void){}
-private:
+    virtual int GetPort(void) {return 8098;}
+    virtual UrlMap* GetUrl(void){return NULL;}
     MediaServer* media;
+private:
+    void RestApiThread(void);
 };
 
 class MasterRestful : public Restful {
 public:
-    MasterRestful(MediaServer* media):Restful(media){}
-    virtual void test(void);
+    MasterRestful(MediaServer* _media):Restful(_media){}
+    virtual int GetPort(void) {return port;}
+    virtual UrlMap* GetUrl(void);
+private:
+    int port;
 };
 
 class SlaveRestful : public Restful {
 public:
-    SlaveRestful(MediaServer* media):Restful(media){}
-    virtual void test(void);
+    SlaveRestful(MediaServer* _media);
+    virtual int GetPort(void) {return port;}
+    virtual UrlMap* GetUrl(void);
+private:
+    int port;
 };
 
-typedef struct {
-    const char *url;
-    //void (*cb)(struct evhttp_request *, void *);
-    void *arg;
-} UrlMap;
+int request_cb(struct evhttp_request *req, void (*http_task)(struct evhttp_request *, void *), void *arg);
 
 #endif
 
