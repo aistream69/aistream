@@ -30,6 +30,7 @@ SlaveParams::~SlaveParams(void) {
 
 void SlaveParams::start(void) {
     SlaveRestful* rest = new SlaveRestful(media);
+    pipe->start();
     rest->start();
 }
 

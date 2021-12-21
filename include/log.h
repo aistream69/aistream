@@ -61,7 +61,7 @@
         } \
     } while(0)
 
-#define AppWarning(format, args...) \
+#define AppWarn(format, args...) \
     do { \
         struct timeval tv; \
         struct tm _time; \

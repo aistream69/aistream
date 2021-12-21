@@ -16,21 +16,21 @@
  *
  ******************************************************************************/
 
-#ifndef __AISTREAM_RTSP_H__
-#define __AISTREAM_RTSP_H__
+#ifndef __AISTREAM_TENSOR_H__
+#define __AISTREAM_TENSOR_H__
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "obj.h"
 
-class RtspParams : public ObjParams {
-public:
-    RtspParams(void);
-    ~RtspParams(void);
-private:
-    char url[256];
-};
+typedef struct {
+    char name[256];
+    //IDataType data_type;
+    //TensorImgFormat format;
+    //ImageFormat img_format;
+    //IDims dims;
+    int size;
+} TTensor;
 
 #endif
 

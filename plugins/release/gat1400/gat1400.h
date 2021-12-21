@@ -16,22 +16,18 @@
  *
  ******************************************************************************/
 
-#ifndef __AISTREAM_MASTER_H__
-#define __AISTREAM_MASTER_H__
+#ifndef __AISTREAM_GAT1400_H__
+#define __AISTREAM_GAT1400_H__
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "obj.h"
 
-class MediaServer;
-class MasterParams {
+class Gat1400 : public Object {
 public:
-    MasterParams(MediaServer* _media);
-    ~MasterParams(void);
-    void start(void);
-    MediaServer* media;
+    Gat1400(MediaServer* _media):Object(_media) {}
 private:
 };
 
 #endif
-

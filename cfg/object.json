@@ -1,0 +1,8 @@
+[
+    {
+        "rtsp": "librtsp.so"
+    },
+    {
+        "text": "libtext.so"
+    }
+]

@@ -1,0 +1,17 @@
+{
+  "tasks": [
+    {
+      "name": "simple",
+      "config": "./samples/simple.json"
+    },
+    {
+      "name": "debug",
+      "config": "./samples/debug.json"
+    },
+    {
+      "name": "jpegdec",
+      "config": "./samples/jpegdec.json"
+    }
+  ]
+}
+

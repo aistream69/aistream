@@ -1,0 +1,147 @@
+{
+    "batch_size": 1,
+    "pipeline": [
+        {
+            "name": "object",
+            "path": "reserved",
+            "input_map": [
+                {
+                    "key": "input",
+                    "val": "global"
+                }
+            ],
+            "output_map": [
+                {
+                    "key": "output",
+                    "val": "frame"
+                }
+            ]
+        },
+        {
+            "name": "decode",
+            "path": "./plugins/release/decode/libdec.so",
+            "async": "true",
+            "input_map": [
+                {
+                    "key": "input",
+                    "val": "frame"
+                }
+            ],
+            "output_map": [
+                {
+                    "key": "output",
+                    "val": "yuv"
+                }
+            ]
+        },
+        {
+            "name": "yuv2rgb",
+            "path": "./plugins/lib/libyuv2rgb.so",
+            "input_map": [
+                {
+                    "key": "input",
+                    "val": "yuv"
+                }
+            ],
+            "output_map": [
+                {
+                    "key": "output",
+                    "val": "rgb",
+                    "params": {
+                        "layout": "NHWC",
+                        "format": "BGR",
+                        "resize": [416,416],
+                        "normalation": "common"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "preprocess",
+            "path": "./plugins/lib/libpreprocess.so",
+            "async": "true",
+            "input_map": [
+                {
+                    "key": "input",
+                    "val": "rgb"
+                }
+            ],
+            "output_map": [
+                {
+                    "key": "output",
+                    "val": "preprocess_result"
+                }
+            ]
+        },
+        {
+            "name": "yolov3",
+            "path": "./plugins/lib/tvm_yolov3.so",
+            "framework": "tvm",
+            "input_map": [
+                {
+                    "key": "input",
+                    "val": "preprocess_result"
+                }
+            ],
+            "output_map": [
+                {
+                    "key": "output1",
+                    "val": "yolo1"
+                },
+                {
+                    "key": "output2",
+                    "val": "yolo2"
+                },
+                {
+                    "key": "output3",
+                    "val": "yolo3"
+                }
+            ]
+        },
+        {
+            "name": "postprocess",
+            "path": "./plugins/lib/libpostprocess.so",
+            "input_map": [
+                {
+                    "key": "input1",
+                    "val": "yolo1"
+                },
+                {
+                    "key": "input2",
+                    "val": "yolo2"
+                },
+                {
+                    "key": "input3",
+                    "val": "yolo3"
+                }
+            ],
+            "output_map": [
+                {
+                    "key": "output",
+                    "val": "global"
+                }
+            ]
+        },
+        {
+            "name": "preview",
+            "path": "./plugins/lib/libpreview.so",
+            "async": "true",
+            "input_map": [
+                {
+                    "key": "input",
+                    "val": "frame"
+                }
+            ],
+            "output_map": [
+                {
+                    "key": "output",
+                    "val": "null",
+                    "params": {
+                        "type": "hls"
+                    }
+                }
+            ]
+        }
+    ]
+}
+

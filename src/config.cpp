@@ -26,23 +26,18 @@ ConfigParams::~ConfigParams(void) {
 }
 
 bool ConfigParams::Read(const char *cfg) {
-    int ret = false;
-    char *buf = ReadFile2Buf(cfg);
-    if(buf == NULL) {
-        AppWarning("%s, ReadFile2Buf failed", cfg);
-        goto end;
+    auto buf = ReadFile2Buf(cfg);
+    if(buf == nullptr) {
+        AppWarn("%s, ReadFile2Buf failed", cfg);
+        return false;
     }
-    master_enable = GetIntValFromJson(buf, "master", "enable");
-    slave_enable = GetIntValFromJson(buf, "slave", "enable");
-    master_rest_port = GetIntValFromJson(buf, "master", "rest_port");
-    slave_rest_port = GetIntValFromJson(buf, "slave", "rest_port");
-    obj_max = GetIntValFromJson(buf, "system", "obj_max");
+    char *ptr = buf.get();
+    master_enable = GetIntValFromJson(ptr, "master", "enable");
+    slave_enable = GetIntValFromJson(ptr, "slave", "enable");
+    master_rest_port = GetIntValFromJson(ptr, "master", "rest_port");
+    slave_rest_port = GetIntValFromJson(ptr, "slave", "rest_port");
+    obj_max = GetIntValFromJson(ptr, "system", "obj_max");
     GetLocalIp(local_ip);
-    ret = true;
-end:
-    if(buf != NULL) {
-        free(buf);
-    }
-    return ret;
+    return true;
 }
 

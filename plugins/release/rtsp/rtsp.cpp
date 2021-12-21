@@ -16,22 +16,7 @@
  *
  ******************************************************************************/
 
-#ifndef __AISTREAM_MASTER_H__
-#define __AISTREAM_MASTER_H__
+#include "rtsp.h"
+#include "log.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-class MediaServer;
-class MasterParams {
-public:
-    MasterParams(MediaServer* _media);
-    ~MasterParams(void);
-    void start(void);
-    MediaServer* media;
-private:
-};
-
-#endif
 

@@ -46,12 +46,17 @@ public:
     MediaServer(void);
     ~MediaServer(void);
     void run(void);
-    ConfigParams*   config;
-    ObjParams*      objs;
-    int             running;
+    MasterParams* GetMaster(void) {return master;}
+    SlaveParams* GetSlave(void) {return slave;}
+    ConfigParams* GetConfig(void) {return config;}
+    ObjParams* GetObjParams(void) {return obj_params;}
+    DbParams* GetDB(void) {return db;}
+    int running;
 private:
     MasterParams*   master;
     SlaveParams*    slave;
+    ConfigParams*   config;
+    ObjParams*      obj_params;
     DbParams*       db;
 };
 

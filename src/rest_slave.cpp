@@ -20,56 +20,164 @@
 #include "rest.h"
 #include "config.h"
 #include "log.h"
+#include "rtsp.h"
+#include "gat1400.h"
 
-static void request_login(struct evhttp_request *req, void *arg) {
+static void ReleaseObjPtr(Object* obj) {
+    printf("enter %s\n", __func__);
+    delete obj;
+}
+
+static void ReleaseTaskPtr(TaskParams* task) {
+    printf("enter %s\n", __func__);
+    delete task;
+}
+
+static void request_login(struct evhttp_request* req, void* arg) {
     request_first_stage;
 }
 
-static void request_logout(struct evhttp_request *req, void *arg) {
+static void request_logout(struct evhttp_request* req, void* arg) {
     request_first_stage;
 }
 
-static void request_system_init(struct evhttp_request *req, void *arg) {
+static void request_system_init(struct evhttp_request* req, void* arg) {
     request_first_stage;
 }
 
-static void request_add_rtsp(struct evhttp_request *req, void *arg) {
+/**********************************************************
+{
+  "id":99,
+  "data":{
+    "tcp_enable":0,
+    "url":"rtsp://127.0.0.1:8554/test.264"
+  }
+} 
+**********************************************************/
+static void request_add_rtsp(struct evhttp_request* req, void* arg) {
     request_first_stage;
     CommonParams *params = (CommonParams *)arg;
     Restful* rest = (Restful* )params->argc;
+    char* buf = (char* )params->arga;
     MediaServer* media = rest->media;
-    AppDebug("##test, running:%d, port:%d", media->running, rest->GetPort());
+    ObjParams* obj_params = media->GetObjParams();
+    int id = GetIntValFromJson(buf, "id");
+    int tcp_enable = GetIntValFromJson(buf, "data", "tcp_enable");
+    auto url = GetStrValFromJson(buf, "data", "url");
+    tcp_enable = tcp_enable < 0 ? 0 : tcp_enable;
+    if(id < 0 || url == nullptr) {
+        AppWarn("get id or url failed, %s", buf);
+        return;
+    }
+    std::shared_ptr<Rtsp> obj(new Rtsp(media), ReleaseObjPtr);
+    obj->SetId(id);
+    obj->SetTcpEnable(tcp_enable);
+    obj->SetRtspUrl(url.get());
+    obj_params->Put2ObjQue(obj);
 }
 
-static void request_add_rtmp(struct evhttp_request *req, void *arg) {
+static void request_add_rtmp(struct evhttp_request* req, void* arg) {
     request_first_stage;
 }
 
-static void request_add_gb28181(struct evhttp_request *req, void *arg) {
+static void request_add_gb28181(struct evhttp_request* req, void* arg) {
     request_first_stage;
 }
 
-static void request_add_gat1400(struct evhttp_request *req, void *arg) {
+static void request_add_gat1400(struct evhttp_request* req, void* arg) {
+    request_first_stage;
+    CommonParams *params = (CommonParams *)arg;
+    Restful* rest = (Restful* )params->argc;
+    char* buf = (char* )params->arga;
+    MediaServer* media = rest->media;
+    ObjParams* obj_params = media->GetObjParams();
+    int id = GetIntValFromJson(buf, "id");
+    if(id < 0) {
+        AppWarn("get id failed, %s", buf);
+        return;
+    }
+    std::shared_ptr<Gat1400> obj(new Gat1400(media), ReleaseObjPtr);
+    obj->SetId(id);
+    obj_params->Put2ObjQue(obj);
+}
+
+static void request_add_file(struct evhttp_request* req, void* arg) {
     request_first_stage;
 }
 
-static void request_add_file(struct evhttp_request *req, void *arg) {
+/**********************************************************
+{
+  "id":99,
+} 
+**********************************************************/
+static void request_del_obj(struct evhttp_request* req, void* arg) {
     request_first_stage;
+    CommonParams *params = (CommonParams *)arg;
+    Restful* rest = (Restful* )params->argc;
+    char* buf = (char* )params->arga;
+    MediaServer* media = rest->media;
+    ObjParams* obj_params = media->GetObjParams();
+    int id = GetIntValFromJson(buf, "id");
+    if(id < 0) {
+        AppWarn("get id failed, %s", buf);
+        return;
+    }
+    obj_params->DelFromObjQue(id);
 }
 
-static void request_del_obj(struct evhttp_request *req, void *arg) {
+/**********************************************************
+{
+  "id":99,
+  "data":{
+    "task":"yolov3"
+  }
+} 
+**********************************************************/
+static void request_start_task(struct evhttp_request* req, void* arg) {
     request_first_stage;
+    CommonParams *params = (CommonParams *)arg;
+    Restful* rest = (Restful* )params->argc;
+    char* buf = (char* )params->arga;
+    MediaServer* media = rest->media;
+    ObjParams* obj_params = media->GetObjParams();
+    int id = GetIntValFromJson(buf, "id");
+    auto task_name = GetStrValFromJson(buf, "data", "task");
+    auto obj = obj_params->GetObj(id);
+    if(id < 0 || task_name == nullptr || obj == nullptr) {
+        AppWarn("get obj task failed, %s", buf);
+        return;
+    }
+    std::shared_ptr<TaskParams> task(new TaskParams, ReleaseTaskPtr);
+    task->SetTaskName(task_name.get());
+    obj->Put2TaskQue(task);
 }
 
-static void request_start_task(struct evhttp_request *req, void *arg) {
+/**********************************************************
+{
+  "id":99,
+  "data":{
+    "task":"yolov3"
+  }
+} 
+**********************************************************/
+static void request_stop_task(struct evhttp_request* req, void* arg) {
     request_first_stage;
+    CommonParams *params = (CommonParams *)arg;
+    Restful* rest = (Restful* )params->argc;
+    char* buf = (char* )params->arga;
+    MediaServer* media = rest->media;
+    ObjParams* obj_params = media->GetObjParams();
+    int id = GetIntValFromJson(buf, "id");
+    auto task_name = GetStrValFromJson(buf, "data", "task");
+    auto obj = obj_params->GetObj(id);
+    if(id < 0 || task_name == nullptr || obj == nullptr) {
+        AppWarn("get obj task failed, %s", buf);
+        return;
+    }
+    obj->DelFromTaskQue(task_name.get());
 }
 
-static void request_stop_task(struct evhttp_request *req, void *arg) {
-    request_first_stage;
-}
-
-static void request_task_support(struct evhttp_request *req, void *arg) {
+static void request_task_support(struct evhttp_request* req, void* arg) {
     request_first_stage;
 }
 
@@ -91,8 +199,8 @@ static UrlMap rest_url_map[] = {
 
 SlaveRestful::SlaveRestful(MediaServer* _media)
     :Restful(_media) {
-    ConfigParams* config = media->config;
-    port = config->slave_rest_port;
+    ConfigParams* config = media->GetConfig();
+    port = config->GetSRestPort();
 }
 
 UrlMap* SlaveRestful::GetUrl(void) {

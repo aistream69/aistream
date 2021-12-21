@@ -28,8 +28,8 @@ class OutputParams {
 public:
     OutputParams(MediaServer* _media);
     ~OutputParams(void);
-private:
     MediaServer* media;
+private:
 };
 
 #endif

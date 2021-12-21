@@ -18,21 +18,10 @@
 
 #include "stream.h"
 
-/* TODO:
- * init sub class : restful, pipeline, config, output, system, master, slave, objs, db etc.
- * use std::list std::vector as more as possible
- * dynamic data use shared_ptr, for example queue/list etc.
- * first step : config.json/master/slave/restful/pipeline/objmanager
- * pipeline : support dlopen and src, for example: some rtsp decode is source given
- * pipeline : static arch code include : infer api(tvm/tensorrt/ncnn), obj data
- * pipeline : tensor interface support module combine, prepare and infer can be in one thread, also can be in two thread
- * tensor : support dynamic shape
- * pipeline queue, trans point, not mem data, zero copy
- * */
 MediaServer::MediaServer(void) {
     running = 1;
     config = new ConfigParams(this);
-    objs = new ObjParams(this);
+    obj_params = new ObjParams(this);
     db = new DbParams(this);
 }
 
@@ -43,12 +32,12 @@ void MediaServer::run(void) {
     bool ret;
     ret = config->Read(CONFIG_FILE);
     assert(ret == true);
-    AppDebug("master_enable:%d, slave_enable:%d", config->master_enable, config->slave_enable);
-    if(config->master_enable) {
+    AppDebug("master_enable:%d, slave_enable:%d", config->MasterEnable(), config->SlaveEnable());
+    if(config->MasterEnable()) {
         master = new MasterParams(this);
         master->start();
     }
-    if(config->slave_enable) {
+    if(config->SlaveEnable()) {
         slave = new SlaveParams(this);
         slave->start();
     }

@@ -20,6 +20,7 @@
 #include "stream.h"
 
 TaskParams::TaskParams(void) {
+    memset(name, 0, sizeof(name));
 }
 
 TaskParams::~TaskParams(void) {

@@ -69,7 +69,7 @@ int request_cb(struct evhttp_request *req, void (*http_task)(struct evhttp_reque
     while (evbuffer_get_length(buf)) {
         int n = evbuffer_remove(buf, cbuf, POST_BUF_MAX);
         if (n >= POST_BUF_MAX) {
-            AppWarning("content length is too large, %d", n);
+            AppWarn("content length is too large, %d", n);
             cbuf[POST_BUF_MAX - 1] = 0;
         }
     }
@@ -137,11 +137,11 @@ static int HttpTask(UrlMap *url_map, int port, void *arg) {
 }
 
 void Restful::RestApiThread(void) {
-    ConfigParams* config = media->config;
+    ConfigParams* config = media->GetConfig();
     int port = GetPort();
     UrlMap* url_map = GetUrl();
     sleep(3);//sleep(20);
-    AppDebug("%s:%d starting ...", config->local_ip, port);
+    AppDebug("%s:%d starting ...", config->LocalIp(), port);
     HttpTask(url_map, port, this);
     AppDebug("run ok");
 }

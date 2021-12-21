@@ -27,8 +27,10 @@ class TaskParams {
 public:
     TaskParams(void);
     ~TaskParams(void);
+    void SetTaskName(char *_name) {strncpy(name, _name, sizeof(name));}
+    char *GetTaskName(void) {return name;}
 private:
-    int task_id;
+    char name[256];
 };
 
 #endif

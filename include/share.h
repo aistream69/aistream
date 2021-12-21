@@ -34,10 +34,22 @@ typedef struct {
 
 int DirCheck(const char *dir);
 int GetLocalIp(char host_ip[128]);
-char *ReadFile2Buf(const char *filename);
+std::unique_ptr<char[]> ReadFile2Buf(const char *filename);
 int ReadFile(const char *filename, void *buf, int size);
 int ReadFile2(const char *filename, void *buf, int max);
-int GetIntValFromJson(char *buf, const char *name1, const char *name2=NULL, const char *name3=NULL);
-
+int GetFileSize(const char *filename);
+int GetIntValFromJson(char *buf, 
+        const char *name1, const char *name2=NULL, const char *name3=NULL);
+int GetIntValFromFile(const char *filename, 
+        const char *name1, const char *name2=NULL, const char *name3=NULL);
+std::unique_ptr<char[]> GetStrValFromJson(char *buf, 
+        const char *name1, const char *name2=NULL, const char *name3= NULL);
+std::unique_ptr<char[]> GetStrValFromFile(const char *filename, 
+        const char *name1, const char *name2=NULL, const char *name3=NULL);
+std::unique_ptr<char[]> GetArrayBufFromJson(char *buf, 
+        const char *name1, const char *name2, const char *name3, int &size);
+std::unique_ptr<char[]> GetArrayBufFromFile(const char *filename, 
+        const char *name1, const char *name2, const char *name3, int &size);
+std::unique_ptr<char[]> GetBufFromArray(char *buf, int index);
 #endif
 

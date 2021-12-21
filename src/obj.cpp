@@ -19,10 +19,85 @@
 #include "obj.h"
 #include "stream.h"
 
+Object::Object(MediaServer *_media)
+  : media(_media) {
+}
+
+Object::~Object(void) {
+}
+
 ObjParams::ObjParams(MediaServer* _media)
   : media(_media) {
 }
 
 ObjParams::~ObjParams(void) {
+}
+
+bool ObjParams::Put2ObjQue(std::shared_ptr<Object> obj) {
+    obj_mtx.lock();
+    obj_vec.push_back(obj);
+    obj_mtx.unlock();
+    return true;
+}
+
+std::shared_ptr<Object> ObjParams::GetObj(int id) {
+    std::shared_ptr<Object> obj = nullptr;
+    std::vector<std::shared_ptr<Object>>::iterator itr;
+    obj_mtx.lock();
+    for(itr = obj_vec.begin(); itr != obj_vec.end(); ++itr) {
+        if((*itr)->GetId() == id) {
+            obj = *itr;
+            break;
+        }
+    }
+    obj_mtx.unlock();
+    return obj;
+}
+
+bool ObjParams::DelFromObjQue(int id) {
+    std::vector<std::shared_ptr<Object>>::iterator itr;
+    obj_mtx.lock();
+    for(itr = obj_vec.begin(); itr != obj_vec.end(); ++itr) {
+        if((*itr)->GetId() == id) {
+            obj_vec.erase(itr);
+            itr--;
+        }
+    }
+    obj_mtx.unlock();
+    return true;
+}
+
+bool Object::Put2TaskQue(std::shared_ptr<TaskParams> task) {
+    task_mtx.lock();
+    task_vec.push_back(task);
+    task_mtx.unlock();
+    return true;
+}
+
+std::shared_ptr<TaskParams> Object::GetTask(char *name) {
+    std::shared_ptr<TaskParams> task = nullptr;
+    std::vector<std::shared_ptr<TaskParams>>::iterator itr;
+    task_mtx.lock();
+    for(itr = task_vec.begin(); itr != task_vec.end(); ++itr) {
+        if(!strcmp((*itr)->GetTaskName(), name)) {
+            task = *itr;
+            break;
+        }
+    }
+    task_mtx.unlock();
+    return task;
+}
+
+bool Object::DelFromTaskQue(char *name) {
+    std::vector<std::shared_ptr<TaskParams>>::iterator itr;
+    task_mtx.lock();
+    for(itr = task_vec.begin(); itr != task_vec.end(); ++itr) {
+        if(!strcmp((*itr)->GetTaskName(), name)) {
+            task_vec.erase(itr);
+            itr--;
+        }
+    }
+    task_mtx.unlock();
+    return true;
 }
 

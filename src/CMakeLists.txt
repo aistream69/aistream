@@ -4,8 +4,12 @@ set(target aistream)
 set(CMAKE_CXX_FLAGS "-std=c++14 -Wall -O2 -g -rdynamic")
 set(CMAKE_C_FLAGS "-Wall -O2 -Wno-misleading-indentation")
 
+set(PLUGINS_RELEASE "${PROJECT_ROOT_PATH}/plugins/release")
+
 include_directories(
     "${PROJECT_ROOT_PATH}/include"
+    "${PLUGINS_RELEASE}/rtsp"
+    "${PLUGINS_RELEASE}/gat1400"
     "${PROJECT_ROOT_PATH}/work/cjson/inc"
     "${PROJECT_ROOT_PATH}/work/3rdparty/libevent/release/include"
     )
@@ -31,6 +35,8 @@ add_executable(
     share.cpp
     db.cpp
     output.cpp
+    "${PLUGINS_RELEASE}/rtsp/rtsp.cpp"
+    "${PLUGINS_RELEASE}/gat1400/gat1400.cpp"
     )
 
 add_dependencies(${target} cjson)

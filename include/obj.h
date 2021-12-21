@@ -22,16 +22,41 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <memory>
+#include <vector>
+#include <mutex>
 #include "task.h"
 
 class MediaServer;
+
+class Object {
+public:
+    Object(MediaServer* _media);
+    ~Object(void);
+    MediaServer* media;
+    void SetId(int _id) {id = _id;}
+    int GetId(void) {return id;}
+    bool Put2TaskQue(std::shared_ptr<TaskParams> task);
+    std::shared_ptr<TaskParams> GetTask(char *name);
+    bool DelFromTaskQue(char *name);
+private:
+    int id;
+    char *user_data;
+    std::mutex task_mtx;
+    std::vector<std::shared_ptr<TaskParams>> task_vec;
+};
+
 class ObjParams {
 public:
     ObjParams(MediaServer* _media);
     ~ObjParams(void);
-private:
     MediaServer* media;
-    TaskParams task;
+    bool Put2ObjQue(std::shared_ptr<Object> obj);
+    std::shared_ptr<Object> GetObj(int id);
+    bool DelFromObjQue(int id);
+private:
+    std::mutex obj_mtx;
+    std::vector<std::shared_ptr<Object>> obj_vec;
 };
 
 #endif

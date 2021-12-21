@@ -1,0 +1,42 @@
+{
+    "batch_size": 1,
+    "pipeline": [
+        {
+            "name": "object",
+            "path": "reserved",
+            "input_map": [
+                {
+                    "key": "input",
+                    "val": "global"
+                }
+            ],
+            "output_map": [
+                {
+                    "key": "output",
+                    "val": "frame"
+                }
+            ]
+        },
+        {
+            "name": "preview",
+            "path": "./plugins/lib/libpreview.so",
+            "async": "true",
+            "input_map": [
+                {
+                    "key": "input",
+                    "val": "frame"
+                }
+            ],
+            "output_map": [
+                {
+                    "key": "output",
+                    "val": "null",
+                    "params": {
+                        "type": "hls"
+                    }
+                }
+            ]
+        }
+    ]
+}
+

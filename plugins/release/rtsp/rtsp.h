@@ -16,11 +16,22 @@
  *
  ******************************************************************************/
 
-#include "rtsp.h"
+#ifndef __AISTREAM_RTSP_H__
+#define __AISTREAM_RTSP_H__
 
-RtspParams::RtspParams(void) {
-}
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "obj.h"
 
-RtspParams::~RtspParams(void) {
-}
+class Rtsp : public Object {
+public:
+    Rtsp(MediaServer* _media):Object(_media) {}
+    void SetTcpEnable(int val) {tcp_enable = val;}
+    void SetRtspUrl(char *str) {strncpy(url, str, sizeof(url));}
+private:
+    char url[256];
+    int tcp_enable;
+};
 
+#endif

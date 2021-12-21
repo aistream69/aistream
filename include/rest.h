@@ -41,7 +41,7 @@ typedef struct {
 #define request_first_stage                         \
 do {                                                \
     if(req == NULL) {                               \
-        AppWarning("req is null");                 \
+        AppWarn("req is null");                 \
         return ;                                    \
     }                                               \
     if(req != (struct evhttp_request *)(-1)) {      \

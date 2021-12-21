@@ -28,8 +28,8 @@ class DbParams {
 public:
     DbParams(MediaServer* _media);
     ~DbParams(void);
-private:
     MediaServer* media;
+private:
 };
 
 #endif

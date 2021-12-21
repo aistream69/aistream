@@ -31,14 +31,20 @@ public:
     ConfigParams(MediaServer* _media);
     ~ConfigParams(void);
     bool Read(const char *cfg);
+    char* LocalIp(void) {return local_ip;}
+    int MasterEnable(void) {return master_enable;}
+    int SlaveEnable(void) {return slave_enable;}
+    int GetMRestPort(void) {return master_rest_port;}
+    int GetSRestPort(void) {return slave_rest_port;}
+    int GetObjMax(void) {return obj_max;}
+    MediaServer* media;
+private:
     char local_ip[128];
     int master_enable;
     int slave_enable;
     int master_rest_port;
     int slave_rest_port;
     int obj_max;
-private:
-    MediaServer* media;
 };
 
 #endif

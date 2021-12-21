@@ -52,7 +52,7 @@ static void SigHandler(const int signal) {
     if(WIFEXITED(status) && WEXITSTATUS(status) == 0) {
         return;
     }
-    AppWarning("recv quit pid %d(%s), restart it", quit_pid, strerror(errno));
+    AppWarn("recv quit pid %d(%s), restart it", quit_pid, strerror(errno));
     MainProcess();
 
     return;

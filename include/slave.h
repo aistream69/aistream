@@ -31,10 +31,10 @@ public:
     SlaveParams(MediaServer* _media);
     ~SlaveParams(void);
     void start(void);
+    MediaServer*    media;
 private:
     Pipeline*       pipe;
     OutputParams*   output;
-    MediaServer*    media;
 };
 
 #endif
