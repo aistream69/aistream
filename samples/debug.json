@@ -3,11 +3,11 @@
     "pipeline": [
         {
             "name": "object",
-            "path": "reserved",
+            "path": "cfg/object.json",
             "input_map": [
                 {
                     "key": "input",
-                    "val": "global"
+                    "val": "entry"
                 }
             ],
             "output_map": [
@@ -46,15 +46,16 @@
             "output_map": [
                 {
                     "key": "output",
-                    "val": "rgb",
-                    "params": {
-                        "layout": "NHWC",
-                        "format": "BGR",
-                        "resize": [416,416],
-                        "normalation": "common"
-                    }
+                    "val": "rgb"
                 }
-            ]
+            ],
+            "params": {
+                "layout": "NHWC",
+                "format": "BGR",
+                "resize": [416,416],
+                "normalation": "common"
+            }
+            
         },
         {
             "name": "preprocess",
@@ -118,9 +119,33 @@
             "output_map": [
                 {
                     "key": "output",
-                    "val": "global"
+                    "val": "postprocess_result"
                 }
             ]
+        },
+        {
+            "name": "rabbitmq",
+            "path": "./plugins/lib/librabbitmq.so",
+            "input_map": [
+                {
+                    "key": "input",
+                    "val": "postprocess_result"
+                }
+            ],
+            "output_map": [
+                {
+                    "key": "output",
+                    "val": "null"
+                }
+            ],
+            "params": {
+                "host": "10.0.0.10",
+                "port": 5672,
+                "username": "guest",
+                "password": "guest",
+                "exchange": "amq.direct",
+                "routingkey": ""
+            }
         },
         {
             "name": "preview",
@@ -135,12 +160,12 @@
             "output_map": [
                 {
                     "key": "output",
-                    "val": "null",
-                    "params": {
-                        "type": "hls"
-                    }
+                    "val": "null"
                 }
-            ]
+            ],
+            "params": {
+                "type": "hls"
+            }
         }
     ]
 }

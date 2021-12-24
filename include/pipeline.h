@@ -1,20 +1,17 @@
-/******************************************************************************
+/****************************************************************************************
  * Copyright (C) 2021 aistream <aistream@yeah.net>
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
- * (at your option) any later version.
+ * Licensed under the BSD 3-Clause License (the "License"); you may not use this 
+ * file except in compliance with the License. You may obtain a copy of the License at
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * https://opensource.org/licenses/BSD-3-Clause
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software distributed
+ * under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+ * CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
  *
- ******************************************************************************/
+ ***************************************************************************************/
 
 #ifndef __AISTREAM_PIPELINE_H__
 #define __AISTREAM_PIPELINE_H__
@@ -32,7 +29,6 @@ class MediaServer;
 typedef struct {
     char key[256];
     char val[256];
-    std::unique_ptr<char[]> params;
     std::vector<std::shared_ptr<TTensor>> tensor;
 } KeyValue;
 
@@ -42,13 +38,17 @@ public:
     ~Element(void);
     void SetName(const char* _name) {strncpy(name, _name, sizeof(name));}
     void SetPath(const char* _path) {strncpy(path, _path, sizeof(path));}
+    void SetFramework(const char* _framework) {strncpy(framework, _framework, sizeof(framework));}
     void Put2InputMap(auto _map) {input_map.push_back(_map);}
     void Put2OutputMap(auto _map) {output_map.push_back(_map);}
     void SetAsync(bool val) {async = val;}
+    void SetParams(char *str);
 private:
     char name[256];
     char path[256];
+    char framework[256];
     bool async;
+    std::unique_ptr<char[]> params;
     std::vector<std::shared_ptr<KeyValue>> input_map;
     std::vector<std::shared_ptr<KeyValue>> output_map;
 };
@@ -82,11 +82,8 @@ public:
     void CheckIfDelAlg(auto config_map);
     size_t GetAlgNum(void);
 private:
-    int running;
     std::mutex alg_mtx;
     std::vector<std::shared_ptr<AlgTask>> alg_vec;
-    void AlgThread(void);
-    void UpdateTask(const char *filename);
 };
 
 #endif

@@ -8,6 +8,7 @@
         "rest_port": 15515
     },
     "system": {
+        "localhost": "10.2.2.70",
         "obj_max": 10000
     }
 }

@@ -1,20 +1,17 @@
-/******************************************************************************
+/****************************************************************************************
  * Copyright (C) 2021 aistream <aistream@yeah.net>
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
- * (at your option) any later version.
+ * Licensed under the BSD 3-Clause License (the "License"); you may not use this 
+ * file except in compliance with the License. You may obtain a copy of the License at
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * https://opensource.org/licenses/BSD-3-Clause
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software distributed
+ * under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+ * CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
  *
- ******************************************************************************/
+ ***************************************************************************************/
 
 #include "stream.h"
 
@@ -37,7 +34,13 @@ bool ConfigParams::Read(const char *cfg) {
     master_rest_port = GetIntValFromJson(ptr, "master", "rest_port");
     slave_rest_port = GetIntValFromJson(ptr, "slave", "rest_port");
     obj_max = GetIntValFromJson(ptr, "system", "obj_max");
-    GetLocalIp(local_ip);
+    auto localhost = GetStrValFromJson(ptr, "system", "localhost");
+    if(localhost != nullptr) {
+        strncpy(local_ip, localhost.get(), sizeof(local_ip));
+    }
+    else {
+        GetLocalIp(local_ip);
+    }
     return true;
 }
 

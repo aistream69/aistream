@@ -34,7 +34,6 @@ add_executable(
     task.cpp
     share.cpp
     db.cpp
-    output.cpp
     "${PLUGINS_RELEASE}/rtsp/rtsp.cpp"
     "${PLUGINS_RELEASE}/gat1400/gat1400.cpp"
     )

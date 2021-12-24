@@ -1,20 +1,17 @@
-/******************************************************************************
+/****************************************************************************************
  * Copyright (C) 2021 aistream <aistream@yeah.net>
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
- * (at your option) any later version.
+ * Licensed under the BSD 3-Clause License (the "License"); you may not use this 
+ * file except in compliance with the License. You may obtain a copy of the License at
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * https://opensource.org/licenses/BSD-3-Clause
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software distributed
+ * under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+ * CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
  *
- ******************************************************************************/
+ ***************************************************************************************/
 
 #include "stream.h"
 #include "rest.h"
@@ -136,18 +133,18 @@ static int HttpTask(UrlMap *url_map, int port, void *arg) {
     return 0;
 }
 
-void Restful::RestApiThread(void) {
-    ConfigParams* config = media->GetConfig();
-    int port = GetPort();
-    UrlMap* url_map = GetUrl();
-    sleep(3);//sleep(20);
-    AppDebug("%s:%d starting ...", config->LocalIp(), port);
-    HttpTask(url_map, port, this);
+static void RestApiThread(Restful* rest) {
+    int port = rest->GetPort();
+    UrlMap* url_map = rest->GetUrl();
+    ConfigParams* config = rest->media->GetConfig();
+    sleep(1);
+    AppDebug("%s:%d start ...", config->LocalIp(), port);
+    HttpTask(url_map, port, rest);
     AppDebug("run ok");
 }
 
 void Restful::start(void) {
-    std::thread t(&Restful::RestApiThread, this);
+    std::thread t(&RestApiThread, this);
     t.detach();
 }
 

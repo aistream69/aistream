@@ -13,22 +13,6 @@
  *
  ***************************************************************************************/
 
-#ifndef __AISTREAM_TASK_H__
-#define __AISTREAM_TASK_H__
-
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
-class TaskParams {
-public:
-    TaskParams(void);
-    ~TaskParams(void);
-    void SetTaskName(char *_name) {strncpy(name, _name, sizeof(name));}
-    char *GetTaskName(void) {return name;}
-private:
-    char name[256];
-};
-
-#endif
 

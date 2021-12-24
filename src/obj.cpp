@@ -1,23 +1,21 @@
-/******************************************************************************
+/****************************************************************************************
  * Copyright (C) 2021 aistream <aistream@yeah.net>
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
- * (at your option) any later version.
+ * Licensed under the BSD 3-Clause License (the "License"); you may not use this 
+ * file except in compliance with the License. You may obtain a copy of the License at
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * https://opensource.org/licenses/BSD-3-Clause
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software distributed
+ * under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+ * CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
  *
- ******************************************************************************/
+ ***************************************************************************************/
 
-#include "obj.h"
 #include "stream.h"
+#include "obj.h"
+#include <thread>
 
 Object::Object(MediaServer *_media)
   : media(_media) {
@@ -42,9 +40,8 @@ bool ObjParams::Put2ObjQue(std::shared_ptr<Object> obj) {
 
 std::shared_ptr<Object> ObjParams::GetObj(int id) {
     std::shared_ptr<Object> obj = nullptr;
-    std::vector<std::shared_ptr<Object>>::iterator itr;
     obj_mtx.lock();
-    for(itr = obj_vec.begin(); itr != obj_vec.end(); ++itr) {
+    for(auto itr = obj_vec.begin(); itr != obj_vec.end(); ++itr) {
         if((*itr)->GetId() == id) {
             obj = *itr;
             break;
@@ -55,9 +52,8 @@ std::shared_ptr<Object> ObjParams::GetObj(int id) {
 }
 
 bool ObjParams::DelFromObjQue(int id) {
-    std::vector<std::shared_ptr<Object>>::iterator itr;
     obj_mtx.lock();
-    for(itr = obj_vec.begin(); itr != obj_vec.end(); ++itr) {
+    for(auto itr = obj_vec.begin(); itr != obj_vec.end(); ++itr) {
         if((*itr)->GetId() == id) {
             obj_vec.erase(itr);
             itr--;
@@ -76,9 +72,8 @@ bool Object::Put2TaskQue(std::shared_ptr<TaskParams> task) {
 
 std::shared_ptr<TaskParams> Object::GetTask(char *name) {
     std::shared_ptr<TaskParams> task = nullptr;
-    std::vector<std::shared_ptr<TaskParams>>::iterator itr;
     task_mtx.lock();
-    for(itr = task_vec.begin(); itr != task_vec.end(); ++itr) {
+    for(auto itr = task_vec.begin(); itr != task_vec.end(); ++itr) {
         if(!strcmp((*itr)->GetTaskName(), name)) {
             task = *itr;
             break;
@@ -89,9 +84,8 @@ std::shared_ptr<TaskParams> Object::GetTask(char *name) {
 }
 
 bool Object::DelFromTaskQue(char *name) {
-    std::vector<std::shared_ptr<TaskParams>>::iterator itr;
     task_mtx.lock();
-    for(itr = task_vec.begin(); itr != task_vec.end(); ++itr) {
+    for(auto itr = task_vec.begin(); itr != task_vec.end(); ++itr) {
         if(!strcmp((*itr)->GetTaskName(), name)) {
             task_vec.erase(itr);
             itr--;
@@ -99,5 +93,36 @@ bool Object::DelFromTaskQue(char *name) {
     }
     task_mtx.unlock();
     return true;
+}
+
+ObjManager::ObjManager(MediaServer* _media)
+  : media(_media) {
+}
+
+ObjManager::~ObjManager(void) {
+}
+
+static void ObjManagerThread(ObjManager* obj_mgr) {
+    MediaServer* media = obj_mgr->media;
+    while(media->running) {
+        /*
+        std::shared_ptr<Object> obj = nullptr;
+        obj_mgr->obj_mtx.lock();
+        for(auto itr = obj_vec.begin(); itr != obj_vec.end(); ++itr) {
+            if((*itr)->GetId() == id) {
+                obj = *itr;
+                break;
+            }
+        }
+        obj_mgr->obj_mtx.unlock();
+        */
+        sleep(2);
+    }
+    AppDebug("run ok");
+}
+
+void ObjManager::start(void) {
+    std::thread t(&ObjManagerThread, this);
+    t.detach();
 }
 

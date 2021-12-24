@@ -3,11 +3,11 @@
     "pipeline": [
         {
             "name": "object",
-            "path": "reserved",
+            "path": "cfg/object.json",
             "input_map": [
                 {
                     "key": "input",
-                    "val": "global"
+                    "val": "entry"
                 }
             ],
             "output_map": [

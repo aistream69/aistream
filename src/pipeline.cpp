@@ -1,20 +1,17 @@
-/******************************************************************************
+/****************************************************************************************
  * Copyright (C) 2021 aistream <aistream@yeah.net>
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
- * (at your option) any later version.
+ * Licensed under the BSD 3-Clause License (the "License"); you may not use this 
+ * file except in compliance with the License. You may obtain a copy of the License at
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * https://opensource.org/licenses/BSD-3-Clause
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software distributed
+ * under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+ * CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
  *
- ******************************************************************************/
+ ***************************************************************************************/
 
 #include "stream.h"
 #include "pipeline.h"
@@ -27,11 +24,6 @@ Pipeline::Pipeline(MediaServer* _media)
 }
 
 Pipeline::~Pipeline(void) {
-}
-
-static void ReleaseAlgTask(AlgTask* alg) {
-    printf("enter %s\n", __func__);
-    delete alg;
 }
 
 static bool ParseMap(const char* name, const char* ele_name, char* ele_buf, auto ele) {
@@ -56,7 +48,6 @@ static bool ParseMap(const char* name, const char* ele_name, char* ele_buf, auto
         auto _map = std::make_shared<KeyValue>();
         strncpy(_map->key, key.get(), sizeof(_map->key));
         strncpy(_map->val, val.get(), sizeof(_map->val));
-        _map->params = GetStrValFromJson(arrbuf.get(), "params");
         if(!strcmp(name, "input_map")) {
             ele->Put2InputMap(_map);
         }
@@ -87,7 +78,7 @@ static bool ParseElement(char* ptr, const char* alg_name, auto alg) {
             AppWarn("get pipeline array[%d] name or path failed, %s", i, alg_name);
             return false;
         }
-        if(strcmp(path.get(), "reserved") != 0 && access(path.get(), F_OK) != 0) {
+        if(access(path.get(), F_OK) != 0) {
             AppWarn("%s not exist, %s:%s", path.get(), alg_name, name.get());
             return false;
         }
@@ -101,9 +92,17 @@ static bool ParseElement(char* ptr, const char* alg_name, auto alg) {
             AppWarn("get output map failed, %s:%s", alg_name, name.get());
             return false;
         }
+        auto framework = GetStrValFromJson(arrbuf.get(), "framework");
+        if(framework != nullptr) {
+            ele->SetFramework(framework.get());
+        }
         auto async = GetStrValFromJson(arrbuf.get(), "async");
         if(async != nullptr && !strcmp(async.get(), "true")) {
             ele->SetAsync(true);
+        }
+        auto params = GetObjBufFromJson(arrbuf.get(), "params");
+        if(params != nullptr) {
+            ele->SetParams(params.get());
         }
         alg->Put2ElementQue(ele);
     }
@@ -137,7 +136,7 @@ static void UpdateTaskByConfig(auto config_map, Pipeline* pipe) {
             continue;
         }
         char* ptr = buf.get();
-        std::shared_ptr<AlgTask> alg(new AlgTask(pipe->media), ReleaseAlgTask);
+        auto alg = std::make_shared<AlgTask>(pipe->media);
         if(ParseElement(ptr, name, alg) != true) {
             continue;
         }
@@ -147,7 +146,7 @@ static void UpdateTaskByConfig(auto config_map, Pipeline* pipe) {
     pipe->CheckIfDelAlg(config_map);
 }
 
-void Pipeline::UpdateTask(const char *filename) {
+static void UpdateTask(const char *filename, Pipeline* pipe) {
     int size = 0;
     std::map<std::string, std::string> config_map;
     auto buf = GetArrayBufFromFile(filename, "tasks", NULL, NULL, size);
@@ -168,16 +167,17 @@ void Pipeline::UpdateTask(const char *filename) {
         }
         config_map.insert({name.get(), config.get()});
     }
-    UpdateTaskByConfig(config_map, this);
+    UpdateTaskByConfig(config_map, pipe);
 }
 
-void Pipeline::AlgThread(void) {
+static void AlgThread(Pipeline* pipe) {
     int size, last_size = 0;
     const char *filename = "cfg/task.json";
-    while(running) {
+    MediaServer* media = pipe->media;
+    while(media->running) {
         size = GetFileSize(filename);
         if(size != last_size) {
-            UpdateTask(filename);
+            UpdateTask(filename, pipe);
             last_size = size;
         }
         sleep(3);
@@ -186,8 +186,7 @@ void Pipeline::AlgThread(void) {
 }
 
 void Pipeline::start(void) {
-    running = 1;
-    std::thread t(&Pipeline::AlgThread, this);
+    std::thread t(&AlgThread, this);
     t.detach();
 }
 
@@ -200,9 +199,8 @@ bool Pipeline::Put2AlgQue(auto alg) {
 
 auto Pipeline::GetAlgTask(const char* name) {
     std::shared_ptr<AlgTask> alg = nullptr;
-    std::vector<std::shared_ptr<AlgTask>>::iterator itr;
     alg_mtx.lock();
-    for(itr = alg_vec.begin(); itr != alg_vec.end(); ++itr) {
+    for(auto itr = alg_vec.begin(); itr != alg_vec.end(); ++itr) {
         char *alg_name = (*itr)->GetName();
         if(!strncmp(alg_name, name, strlen(alg_name)+1)) {
             alg = *itr;
@@ -250,8 +248,14 @@ bool AlgTask::Put2ElementQue(auto ele) {
 
 Element::Element(void) {
     async = false;
+    params = nullptr;
 }
 
 Element::~Element(void) {
+}
+
+void Element::SetParams(char *str) {
+    params = std::make_unique<char[]>(strlen(str)+1);
+    strcpy(params.get(), str);
 }
 
