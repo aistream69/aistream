@@ -53,7 +53,7 @@ class Restful {
 public:
     Restful(MediaServer* _media);
     ~Restful(void);
-    void start(void);
+    void Start(void);
     virtual int GetPort(void) {return 8098;}
     virtual UrlMap* GetUrl(void){return NULL;}
     MediaServer* media;

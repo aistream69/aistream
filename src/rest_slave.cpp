@@ -72,6 +72,11 @@ static void request_add_rtsp(struct evhttp_request* req, void* arg) {
         AppWarn("get id or url failed, %s", buf);
         return;
     }
+    auto _obj = obj_params->GetObj(id);
+    if(_obj != nullptr) {
+        AppWarn("obj %d already exist", id);
+        return;
+    }
     auto obj = std::make_shared<Rtsp>(media);
     obj->SetId(id);
     obj->SetTcpEnable(tcp_enable);
@@ -97,6 +102,11 @@ static void request_add_gat1400(struct evhttp_request* req, void* arg) {
     int id = GetIntValFromJson(buf, "id");
     if(id < 0) {
         AppWarn("get id failed, %s", buf);
+        return;
+    }
+    auto _obj = obj_params->GetObj(id);
+    if(_obj != nullptr) {
+        AppWarn("obj %d already exist", id);
         return;
     }
     auto obj = std::make_shared<Gat1400>(media);
@@ -160,7 +170,7 @@ static void request_del_obj(struct evhttp_request* req, void* arg) {
   }
 } 
 Note:
- -- "params" is private data, it doesn't has any standard
+ -- "params" is private data, it isn't necessary, and doesn't has any standard
  -- Every element default enable is 1
  -- In pipeline config, rabbitmq element also has it's default params
  -- All params appeared in restful have dynamic attribute
@@ -179,8 +189,17 @@ static void request_start_task(struct evhttp_request* req, void* arg) {
         AppWarn("get obj task failed, %s", buf);
         return;
     }
-    auto task = std::make_shared<TaskParams>();
+    auto _task = obj->GetTask(task_name.get());
+    if(_task != nullptr) {
+        AppWarn("obj %d task %s already exist", id, task_name.get());
+        return;
+    }
+    auto task = std::make_shared<TaskParams>(obj);
     task->SetTaskName(task_name.get());
+    auto _params = GetObjBufFromJson(buf, "data", "params");
+    if(_params != nullptr) {
+        task->SetParams(_params.get());
+    }
     obj->Put2TaskQue(task);
 }
 

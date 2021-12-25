@@ -24,11 +24,11 @@ SlaveParams::SlaveParams(MediaServer* _media)
 SlaveParams::~SlaveParams(void) {
 }
 
-void SlaveParams::start(void) {
+void SlaveParams::Start(void) {
     SlaveRestful* rest = new SlaveRestful(media);
-    ObjManager* obj_manager = new ObjManager(media);
-    pipe->start();
-    rest->start();
-    obj_manager->start();
+    ObjParams* obj_params = media->GetObjParams();
+    pipe->Start();
+    rest->Start();
+    obj_params->Start();
 }
 

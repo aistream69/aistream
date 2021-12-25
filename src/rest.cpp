@@ -143,7 +143,7 @@ static void RestApiThread(Restful* rest) {
     AppDebug("run ok");
 }
 
-void Restful::start(void) {
+void Restful::Start(void) {
     std::thread t(&RestApiThread, this);
     t.detach();
 }

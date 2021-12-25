@@ -26,23 +26,30 @@ MediaServer::MediaServer(void) {
 MediaServer::~MediaServer(void) {
 }
 
-void MediaServer::run(void) {
+static void UpdateTime(MediaServer* media) {
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    media->now_sec = tv.tv_sec;
+}
+
+void MediaServer::Run(void) {
     bool ret;
     ret = config->Read(CONFIG_FILE);
     assert(ret == true);
     AppDebug("master_enable:%d, slave_enable:%d", config->MasterEnable(), config->SlaveEnable());
     if(config->MasterEnable()) {
         master = new MasterParams(this);
-        master->start();
+        master->Start();
     }
     if(config->SlaveEnable()) {
         slave = new SlaveParams(this);
-        slave->start();
+        slave->Start();
     }
     while(running) {
         if(!access("aistream.stop", F_OK)) {
             break;
         }
+        UpdateTime(this);
         sleep(2);
     }
 }

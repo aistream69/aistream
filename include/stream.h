@@ -41,7 +41,7 @@ class MediaServer {
 public:
     MediaServer(void);
     ~MediaServer(void);
-    void run(void);
+    void Run(void);
     MasterParams* GetMaster(void) {return master;}
     SlaveParams* GetSlave(void) {return slave;}
     ConfigParams* GetConfig(void) {return config;}
@@ -49,6 +49,7 @@ public:
     DbParams* GetDB(void) {return db;}
     int running;
     int system_init;
+    long int now_sec;
 private:
     MasterParams*   master;
     SlaveParams*    slave;

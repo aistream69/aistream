@@ -56,11 +56,28 @@ bool ObjParams::DelFromObjQue(int id) {
     for(auto itr = obj_vec.begin(); itr != obj_vec.end(); ++itr) {
         if((*itr)->GetId() == id) {
             obj_vec.erase(itr);
-            itr--;
+            break;
         }
     }
     obj_mtx.unlock();
     return true;
+}
+
+void ObjParams::ObjManager(void) {
+    while(media->running) {
+        obj_mtx.lock();
+        for(auto itr = obj_vec.begin(); itr != obj_vec.end(); ++itr) {
+            (*itr)->TraverseTaskQue();
+        }
+        obj_mtx.unlock();
+        sleep(2);
+    }
+    AppDebug("run ok");
+}
+
+void ObjParams::Start(void) {
+    std::thread t(&ObjParams::ObjManager, this);
+    t.detach();
 }
 
 bool Object::Put2TaskQue(std::shared_ptr<TaskParams> task) {
@@ -87,42 +104,24 @@ bool Object::DelFromTaskQue(char *name) {
     task_mtx.lock();
     for(auto itr = task_vec.begin(); itr != task_vec.end(); ++itr) {
         if(!strcmp((*itr)->GetTaskName(), name)) {
+            (*itr)->Stop();
             task_vec.erase(itr);
-            itr--;
+            break;
         }
     }
     task_mtx.unlock();
     return true;
 }
 
-ObjManager::ObjManager(MediaServer* _media)
-  : media(_media) {
-}
-
-ObjManager::~ObjManager(void) {
-}
-
-static void ObjManagerThread(ObjManager* obj_mgr) {
-    MediaServer* media = obj_mgr->media;
-    while(media->running) {
-        /*
-        std::shared_ptr<Object> obj = nullptr;
-        obj_mgr->obj_mtx.lock();
-        for(auto itr = obj_vec.begin(); itr != obj_vec.end(); ++itr) {
-            if((*itr)->GetId() == id) {
-                obj = *itr;
-                break;
-            }
+void Object::TraverseTaskQue(void) {
+    task_mtx.lock();
+    for(auto itr = task_vec.begin(); itr != task_vec.end(); ++itr) {
+        auto task = (*itr);
+        if(!task->KeepAlive()) {
+            task->Stop(true);
+            task->Start();
         }
-        obj_mgr->obj_mtx.unlock();
-        */
-        sleep(2);
     }
-    AppDebug("run ok");
-}
-
-void ObjManager::start(void) {
-    std::thread t(&ObjManagerThread, this);
-    t.detach();
+    task_mtx.unlock();
 }
 

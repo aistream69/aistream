@@ -31,7 +31,7 @@ static void MainProcess(void) {
     }
     else if(pid == 0) {
         MediaServer *media = new MediaServer();
-        media->run();
+        media->Run();
         AppDebug("run ok");
         exit(0);
     }

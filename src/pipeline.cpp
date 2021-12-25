@@ -185,7 +185,7 @@ static void AlgThread(Pipeline* pipe) {
     AppDebug("run ok");
 }
 
-void Pipeline::start(void) {
+void Pipeline::Start(void) {
     std::thread t(&AlgThread, this);
     t.detach();
 }

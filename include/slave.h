@@ -26,7 +26,7 @@ class SlaveParams {
 public:
     SlaveParams(MediaServer* _media);
     ~SlaveParams(void);
-    void start(void);
+    void Start(void);
     MediaServer*    media;
 private:
     Pipeline*       pipe;

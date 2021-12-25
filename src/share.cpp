@@ -184,7 +184,7 @@ int GetIntValFromJson(char *buf, const char *name1, const char *name2, const cha
     strncpy(name, name1, sizeof(name));
     pSub1 = cJSON_GetObjectItem(root, name);
     if(pSub1 == NULL) {
-        printf("get json null, %s\n", name);
+        //printf("get json null, %s\n", name);
         goto end;
     }
     if(name2 == NULL) {
@@ -194,7 +194,7 @@ int GetIntValFromJson(char *buf, const char *name1, const char *name2, const cha
     strncpy(name, name2, sizeof(name));
     pSub2 = cJSON_GetObjectItem(pSub1, name);
     if(pSub2 == NULL) {
-        printf("get json null, %s\n", name);
+        //printf("get json null, %s\n", name);
         goto end;
     }
     if(name3 == NULL) {
@@ -204,7 +204,7 @@ int GetIntValFromJson(char *buf, const char *name1, const char *name2, const cha
     strncpy(name, name3, sizeof(name));
     pSub3 = cJSON_GetObjectItem(pSub2, name);
     if(pSub3 == NULL) {
-        printf("get json null, %s\n", name);
+        //printf("get json null, %s\n", name);
         goto end;
     }
     val = pSub3->valueint;
@@ -242,7 +242,7 @@ std::unique_ptr<char[]> GetStrValFromJson(char *buf,
     strncpy(name, name2, sizeof(name));
     pSub2 = cJSON_GetObjectItem(pSub1, name);
     if(pSub2 == NULL) {
-        printf("get json null, %s\n", name);
+        //printf("get json null, %s\n", name);
         goto end;
     }
     if(name3 == NULL) {
@@ -252,7 +252,7 @@ std::unique_ptr<char[]> GetStrValFromJson(char *buf,
     strncpy(name, name3, sizeof(name));
     pSub3 = cJSON_GetObjectItem(pSub2, name);
     if(pSub3 == NULL) {
-        printf("get json null, %s\n", name);
+        //printf("get json null, %s\n", name);
         goto end;
     }
     tmp = pSub3->valuestring;
@@ -305,7 +305,7 @@ std::unique_ptr<char[]> GetArrayBufFromJson(char *buf,
     strncpy(name, name1, sizeof(name));
     pSub1 = cJSON_GetObjectItem(root, name);
     if(pSub1 == NULL) {
-        printf("get json null, %s\n", name);
+        //printf("get json null, %s\n", name);
         goto end;
     }
     if(name2 == NULL) {
@@ -315,7 +315,7 @@ std::unique_ptr<char[]> GetArrayBufFromJson(char *buf,
     strncpy(name, name2, sizeof(name));
     pSub2 = cJSON_GetObjectItem(pSub1, name);
     if(pSub2 == NULL) {
-        printf("get json null, %s\n", name);
+        //printf("get json null, %s\n", name);
         goto end;
     }
     if(name3 == NULL) {
@@ -325,7 +325,7 @@ std::unique_ptr<char[]> GetArrayBufFromJson(char *buf,
     strncpy(name, name3, sizeof(name));
     pSub3 = cJSON_GetObjectItem(pSub2, name);
     if(pSub3 == NULL) {
-        printf("get json null, %s\n", name);
+        //printf("get json null, %s\n", name);
         goto end;
     }
     pArray = pSub3;
@@ -406,7 +406,7 @@ std::unique_ptr<char[]> GetObjBufFromJson(char *buf,
     strncpy(name, name2, sizeof(name));
     pSub2 = cJSON_GetObjectItem(pSub1, name);
     if(pSub2 == NULL) {
-        printf("get json null, %s\n", name);
+        //printf("get json null, %s\n", name);
         goto end;
     }
     if(name3 == NULL) {
@@ -416,7 +416,7 @@ std::unique_ptr<char[]> GetObjBufFromJson(char *buf,
     strncpy(name, name3, sizeof(name));
     pSub3 = cJSON_GetObjectItem(pSub2, name);
     if(pSub3 == NULL) {
-        printf("get json null, %s\n", name);
+        //printf("get json null, %s\n", name);
         goto end;
     }
     tmp = cJSON_Print(pSub3);

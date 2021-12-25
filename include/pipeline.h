@@ -76,7 +76,7 @@ public:
     Pipeline(MediaServer* _media);
     ~Pipeline(void);
     MediaServer* media;
-    void start(void);
+    void Start(void);
     bool Put2AlgQue(auto alg);
     auto GetAlgTask(const char* name);
     void CheckIfDelAlg(auto config_map);

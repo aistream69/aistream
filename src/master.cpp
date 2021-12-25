@@ -24,6 +24,6 @@ MasterParams::~MasterParams(void) {
     AppDebug("##test");
 }
 
-void MasterParams::start(void) {
+void MasterParams::Start(void) {
 }
 

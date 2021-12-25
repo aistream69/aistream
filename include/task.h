@@ -19,15 +19,25 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <memory>
 
+class Object;
 class TaskParams {
 public:
-    TaskParams(void);
+    TaskParams(std::shared_ptr<Object> _obj);
     ~TaskParams(void);
     void SetTaskName(char *_name) {strncpy(name, _name, sizeof(name));}
     char *GetTaskName(void) {return name;}
+    void SetParams(char *str);
+    void Start(void);
+    void Stop(bool sync = false);
+    bool KeepAlive(void);
+    int running;
+    std::weak_ptr<Object> obj;
 private:
     char name[256];
+    long int task_beat;
+    std::unique_ptr<char[]> params;
 };
 
 #endif

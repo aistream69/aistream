@@ -26,28 +26,19 @@
 
 class MediaServer;
 
-class ObjManager {
-public:
-    ObjManager(MediaServer* _media);
-    ~ObjManager(void);
-    void start(void);
-    MediaServer* media;
-private:
-};
-
 class Object {
 public:
     Object(MediaServer* _media);
     ~Object(void);
-    MediaServer* media;
     void SetId(int _id) {id = _id;}
     int GetId(void) {return id;}
     bool Put2TaskQue(std::shared_ptr<TaskParams> task);
     std::shared_ptr<TaskParams> GetTask(char *name);
     bool DelFromTaskQue(char *name);
+    void TraverseTaskQue(void);
+    MediaServer* media;
 private:
     int id;
-    char *user_data;
     std::mutex task_mtx;
     std::vector<std::shared_ptr<TaskParams>> task_vec;
 };
@@ -56,11 +47,13 @@ class ObjParams {
 public:
     ObjParams(MediaServer* _media);
     ~ObjParams(void);
-    MediaServer* media;
     bool Put2ObjQue(std::shared_ptr<Object> obj);
     std::shared_ptr<Object> GetObj(int id);
     bool DelFromObjQue(int id);
+    void Start(void);
+    MediaServer* media;
 private:
+    void ObjManager(void);
     std::mutex obj_mtx;
     std::vector<std::shared_ptr<Object>> obj_vec;
 };
