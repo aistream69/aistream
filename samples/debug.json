@@ -20,7 +20,6 @@
         {
             "name": "decode",
             "path": "./plugins/release/decode/libdec.so",
-            "async": "true",
             "input_map": [
                 {
                     "key": "input",
@@ -60,7 +59,6 @@
         {
             "name": "preprocess",
             "path": "./plugins/lib/libpreprocess.so",
-            "async": "true",
             "input_map": [
                 {
                     "key": "input",
@@ -86,16 +84,8 @@
             ],
             "output_map": [
                 {
-                    "key": "output1",
-                    "val": "yolo1"
-                },
-                {
-                    "key": "output2",
-                    "val": "yolo2"
-                },
-                {
-                    "key": "output3",
-                    "val": "yolo3"
+                    "key": "output",
+                    "val": "yololayer3"
                 }
             ]
         },
@@ -104,16 +94,8 @@
             "path": "./plugins/lib/libpostprocess.so",
             "input_map": [
                 {
-                    "key": "input1",
-                    "val": "yolo1"
-                },
-                {
-                    "key": "input2",
-                    "val": "yolo2"
-                },
-                {
-                    "key": "input3",
-                    "val": "yolo3"
+                    "key": "input",
+                    "val": "yololayer3"
                 }
             ],
             "output_map": [
@@ -124,12 +106,29 @@
             ]
         },
         {
+            "name": "tracker",
+            "path": "./plugins/lib/libtracker.so",
+            "async": "true",
+            "input_map": [
+                {
+                    "key": "input",
+                    "val": "postprocess_result"
+                }
+            ],
+            "output_map": [
+                {
+                    "key": "output",
+                    "val": "tracker_result"
+                }
+            ]
+        },
+        {
             "name": "rabbitmq",
             "path": "./plugins/lib/librabbitmq.so",
             "input_map": [
                 {
                     "key": "input",
-                    "val": "postprocess_result"
+                    "val": "tracker_result"
                 }
             ],
             "output_map": [
@@ -150,7 +149,6 @@
         {
             "name": "preview",
             "path": "./plugins/lib/libpreview.so",
-            "async": "true",
             "input_map": [
                 {
                     "key": "input",
@@ -166,6 +164,26 @@
             "params": {
                 "type": "hls"
             }
+        },
+        {
+            "name": "display",
+            "path": "./plugins/lib/libdisplay.so",
+            "input_map": [
+                {
+                    "key": "input1",
+                    "val": "rgb"
+                },
+                {
+                    "key": "input2",
+                    "val": "tracker_result"
+                }
+            ],
+            "output_map": [
+                {
+                    "key": "output",
+                    "val": "null"
+                }
+            ]
         }
     ]
 }

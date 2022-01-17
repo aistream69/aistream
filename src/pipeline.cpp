@@ -16,7 +16,6 @@
 #include "stream.h"
 #include "pipeline.h"
 #include <map>
-#include <thread>
 #include <algorithm>
 
 Pipeline::Pipeline(MediaServer* _media)
@@ -53,6 +52,9 @@ static bool ParseMap(const char* name, const char* ele_name, char* ele_buf, auto
         }
         else if(!strcmp(name, "output_map")) {
             ele->Put2OutputMap(_map);
+            if(size > 1) {
+                AppWarn("not support, ele %s output num is greater than 1, %d", ele_name, size);
+            }
         }
     }
     return true;
@@ -118,8 +120,12 @@ static void AddAlgSupport(char* ptr, const char* name, const char* config, auto 
     alg->SetName(name);
     alg->SetConfig(config);
     alg->SetBatchSize(batch_size);
+    if(alg->AssignToThreads() != true) {
+        AppWarn("assign ele to threads failed, alg:%s", name);
+        return;
+    }
     pipe->Put2AlgQue(alg);
-    AppDebug("add alg support:%s,total:%ld", name, pipe->GetAlgNum());
+    AppDebug("add alg support:%s(%ld),total:%ld", name, alg->GetThreadNum(), pipe->GetAlgNum());
 }
 
 static void UpdateTaskByConfig(auto config_map, Pipeline* pipe) {
@@ -197,7 +203,7 @@ bool Pipeline::Put2AlgQue(auto alg) {
     return true;
 }
 
-auto Pipeline::GetAlgTask(const char* name) {
+std::shared_ptr<AlgTask> Pipeline::GetAlgTask(const char* name) {
     std::shared_ptr<AlgTask> alg = nullptr;
     alg_mtx.lock();
     for(auto itr = alg_vec.begin(); itr != alg_vec.end(); ++itr) {
@@ -246,9 +252,138 @@ bool AlgTask::Put2ElementQue(auto ele) {
     return true;
 }
 
+/*
+static void TestThread(TaskParams* task) {
+    if(task->obj.expired()) {
+        AppWarn("task:%s, obj is expired", task->GetTaskName());
+        return;
+    }
+    auto obj = task->obj.lock();
+    while(task->running) {
+        sleep(5);
+        AppDebug("id:%d, task:%s", obj->GetId(), task->GetTaskName());
+    }
+    AppDebug("run ok");
+}
+    std::thread t(&TestThread, task);
+    t.detach();
+*/
+
+auto AlgTask::SearchEntry(void) {
+    std::shared_ptr<Element> ret = nullptr;
+    ele_mtx.lock();
+    for(auto itr = ele_vec.begin(); itr != ele_vec.end(); ++itr) {
+        auto ele = (*itr);
+        auto _map = ele->GetInputMap([](KeyValue* p, void* arg) {
+            if(!strncmp(p->val, "entry", sizeof(p->val))) {
+                return true;
+            }
+            else {
+                return false;
+            }
+        });
+        if(_map != nullptr) {
+            ret = ele;
+            break;
+        }
+    }
+    ele_mtx.unlock();
+    return ret;
+}
+
+auto AlgTask::GetNextEle(auto ele) {
+    std::vector<std::shared_ptr<Element>> next;
+    auto output = ele->GetOutputMap();
+    if(output == nullptr) {
+        AppWarn("get output map failed, %s", ele->GetName());
+        return next;
+    }
+    ele_mtx.lock();
+    for(auto itr = ele_vec.begin(); itr != ele_vec.end(); ++itr) {
+        auto ele = (*itr);
+        auto _map = ele->GetInputMap([](KeyValue* p, void* arg) {
+            char* val = (char* )arg;
+            if(!strncmp(p->val, val, sizeof(p->val))) {
+                return true;
+            }
+            else {
+                return false;
+            }
+        }, output->val);
+        if(_map != nullptr) {
+            next.push_back(ele);
+        }
+    }
+    ele_mtx.unlock();
+    return next;
+}
+
+void AlgTask::AttachToThread(auto first) {
+    if(first->attach_to_thread) {
+        return;
+    }
+    TaskThread* t = new TaskThread();
+    thread_vec.push_back(t);
+    t->t_ele_vec.push_back(first);
+    first->attach_to_thread = true;
+
+    for(auto ele = first; ; ) {
+        auto next = GetNextEle(ele);
+        if(next.size() == 0) {
+            break;
+        }
+        else if(next.size() == 1) {
+            ele = next[0];
+            if(ele->GetAsync()) {
+                t = new TaskThread();
+                thread_vec.push_back(t);
+            }
+            t->t_ele_vec.push_back(ele);
+            ele->attach_to_thread = true;
+        }
+        else {
+            for(size_t i = 0; i < next.size(); i ++) {
+                auto _ele = next[i];
+                AttachToThread(_ele);
+            }
+            break;
+        }
+    }
+}
+
+bool AlgTask::AssignToThreads(void) {
+    auto entry = SearchEntry();
+    if(entry == nullptr) {
+        AppWarn("search entry failed");
+        return false;
+    }
+    AttachToThread(entry);
+    AppDebug("alg:%s, attach ele to threads ok, thread num:%ld", name, thread_vec.size());
+
+    return true;
+}
+
+void AlgTask::Start(TaskParams* task) {
+    for(size_t i = 0; i < thread_vec.size(); i ++) {
+        TaskThread* t = thread_vec[i];
+        for(size_t j = 0; j < t->t_ele_vec.size(); j ++) {
+            auto ele = t->t_ele_vec[j];
+            AppDebug("thread %ld, ele:%s", i, ele->GetName());
+        }
+    }
+}
+
+void AlgTask::Stop(TaskParams* task) {
+    AppDebug("TODO");
+}
+
 Element::Element(void) {
+    memset(name, 0, sizeof(name));
+    memset(path, 0, sizeof(path));
+    memset(framework, 0, sizeof(framework));
     async = false;
     params = nullptr;
+    attach_to_thread = false;
 }
 
 Element::~Element(void) {
@@ -257,5 +392,31 @@ Element::~Element(void) {
 void Element::SetParams(char *str) {
     params = std::make_unique<char[]>(strlen(str)+1);
     strcpy(params.get(), str);
+}
+
+void Element::Put2InputMap(auto _map) {
+    input_map.push_back(_map);
+}
+
+void Element::Put2OutputMap(auto _map) {
+    output_map.push_back(_map);
+}
+
+KeyValue* Element::GetInputMap(bool (*cb)(KeyValue* _map, void* arg), void* arg) {
+    KeyValue* _map = nullptr;
+    for(auto itr = input_map.begin(); itr != input_map.end(); ++itr) {
+        if(cb != nullptr && cb((*itr).get(), arg) == true) {
+            _map = (*itr).get();
+            break;
+        }
+    }
+    return _map;
+}
+
+KeyValue* Element::GetOutputMap(void) {
+    if(output_map.size() == 0) {
+        return nullptr;
+    }
+    return output_map[0].get();
 }
 

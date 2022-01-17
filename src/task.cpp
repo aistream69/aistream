@@ -13,14 +13,15 @@
  *
  ***************************************************************************************/
 
-#include "task.h"
 #include "stream.h"
+#include "task.h"
 
 TaskParams::TaskParams(std::shared_ptr<Object> _obj)
   : obj(_obj) {
     running = 0;
     task_beat = 0;
     params = nullptr;
+    alg = nullptr;
 }
 
 TaskParams::~TaskParams(void) {
@@ -31,26 +32,33 @@ void TaskParams::SetParams(char *str) {
     strcpy(params.get(), str);
 }
 
-void TaskParams::Start(void) {
+int TaskParams::Start(void) {
     if(obj.expired()) {
         AppWarn("task:%s, obj is expired", name);
-        return;
+        return -1;
     }
     auto _obj = obj.lock();
-    if(params != nullptr) {
-        AppDebug("id:%d, task %s params:%s", _obj->GetId(), name, params.get());
+    MediaServer* media = _obj->media;
+    SlaveParams* slave = media->GetSlave();
+    Pipeline* pipe = slave->GetPipe();;
+    alg = pipe->GetAlgTask(name);
+    if(alg == nullptr) {
+        AppWarn("id:%d, task:%s, get alg task failed", _obj->GetId(), name);
+        return -1;
     }
     running = 1;
+    alg->Start(this);
+    return 0;
 }
 
-void TaskParams::Stop(bool sync) {
-    if(!running) {
-        return;
+int TaskParams::Stop(bool sync) {
+    if(!running || !sync) {
+        running = 0;
+        return 0;
     }
     running = 0;
-    if(!sync) {
-        return;
-    }
+    alg->Stop(this);
+    return 0;
 }
 
 bool TaskParams::KeepAlive(void) {

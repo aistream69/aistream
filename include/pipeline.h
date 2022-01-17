@@ -22,6 +22,7 @@
 #include <memory>
 #include <vector>
 #include <mutex>
+#include <thread>
 #include "tensor.h"
 
 class MediaServer;
@@ -37,12 +38,19 @@ public:
     Element(void);
     ~Element(void);
     void SetName(const char* _name) {strncpy(name, _name, sizeof(name));}
+    char* GetName(void) {return name;}
     void SetPath(const char* _path) {strncpy(path, _path, sizeof(path));}
+    char* GetPath(void) {return path;}
     void SetFramework(const char* _framework) {strncpy(framework, _framework, sizeof(framework));}
-    void Put2InputMap(auto _map) {input_map.push_back(_map);}
-    void Put2OutputMap(auto _map) {output_map.push_back(_map);}
+    char* GetFramework(void) {return framework;}
+    void Put2InputMap(auto _map);
+    void Put2OutputMap(auto _map);
+    KeyValue* GetInputMap(bool (*cb)(KeyValue* _map, void* arg), void* arg = NULL);
+    KeyValue* GetOutputMap(void);
     void SetAsync(bool val) {async = val;}
+    bool GetAsync(void) {return async;}
     void SetParams(char *str);
+    bool attach_to_thread;
 private:
     char name[256];
     char path[256];
@@ -53,6 +61,15 @@ private:
     std::vector<std::shared_ptr<KeyValue>> output_map;
 };
 
+class TaskThread {
+public:
+    TaskThread(void) {}
+    ~TaskThread(void) {}
+    std::vector<std::shared_ptr<Element>> t_ele_vec;
+private:
+};
+
+class TaskParams;
 class AlgTask {
 public:
     AlgTask(MediaServer* _media);
@@ -63,12 +80,20 @@ public:
     void SetConfig(const char* cfg) {strncpy(config, cfg, sizeof(config));}
     void SetBatchSize(int val) {batch_size = val;}
     bool Put2ElementQue(auto ele);
+    bool AssignToThreads(void);
+    size_t GetThreadNum(void) {return thread_vec.size();}
+    void Start(TaskParams* task);
+    void Stop(TaskParams* task);
 private:
     char name[128];
     char config[256];
     int batch_size;
     std::mutex ele_mtx;
     std::vector<std::shared_ptr<Element>> ele_vec;
+    std::vector<TaskThread*> thread_vec;
+    auto SearchEntry(void);
+    auto GetNextEle(auto ele);
+    void AttachToThread(auto ele);
 };
 
 class Pipeline {
@@ -78,7 +103,7 @@ public:
     MediaServer* media;
     void Start(void);
     bool Put2AlgQue(auto alg);
-    auto GetAlgTask(const char* name);
+    std::shared_ptr<AlgTask> GetAlgTask(const char* name);
     void CheckIfDelAlg(auto config_map);
     size_t GetAlgNum(void);
 private:

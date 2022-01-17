@@ -17,13 +17,6 @@
 #include "obj.h"
 #include <thread>
 
-Object::Object(MediaServer *_media)
-  : media(_media) {
-}
-
-Object::~Object(void) {
-}
-
 ObjParams::ObjParams(MediaServer* _media)
   : media(_media) {
 }
@@ -78,6 +71,13 @@ void ObjParams::ObjManager(void) {
 void ObjParams::Start(void) {
     std::thread t(&ObjParams::ObjManager, this);
     t.detach();
+}
+
+Object::Object(MediaServer *_media)
+  : media(_media) {
+}
+
+Object::~Object(void) {
 }
 
 bool Object::Put2TaskQue(std::shared_ptr<TaskParams> task) {

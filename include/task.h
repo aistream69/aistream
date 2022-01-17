@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <memory>
+#include "pipeline.h"
 
 class Object;
 class TaskParams {
@@ -29,15 +30,16 @@ public:
     void SetTaskName(char *_name) {strncpy(name, _name, sizeof(name));}
     char *GetTaskName(void) {return name;}
     void SetParams(char *str);
-    void Start(void);
-    void Stop(bool sync = false);
+    int Start(void);
+    int Stop(bool sync = false);
     bool KeepAlive(void);
-    int running;
     std::weak_ptr<Object> obj;
+    int running;
 private:
     char name[256];
     long int task_beat;
     std::unique_ptr<char[]> params;
+    std::shared_ptr<AlgTask> alg;
 };
 
 #endif
