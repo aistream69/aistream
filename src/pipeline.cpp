@@ -120,12 +120,8 @@ static void AddAlgSupport(char* ptr, const char* name, const char* config, auto 
     alg->SetName(name);
     alg->SetConfig(config);
     alg->SetBatchSize(batch_size);
-    if(alg->AssignToThreads() != true) {
-        AppWarn("assign ele to threads failed, alg:%s", name);
-        return;
-    }
     pipe->Put2AlgQue(alg);
-    AppDebug("add alg support:%s(%ld),total:%ld", name, alg->GetThreadNum(), pipe->GetAlgNum());
+    AppDebug("add alg support:%s,total:%ld", name, pipe->GetAlgNum());
 }
 
 static void UpdateTaskByConfig(auto config_map, Pipeline* pipe) {
@@ -252,23 +248,6 @@ bool AlgTask::Put2ElementQue(auto ele) {
     return true;
 }
 
-/*
-static void TestThread(TaskParams* task) {
-    if(task->obj.expired()) {
-        AppWarn("task:%s, obj is expired", task->GetTaskName());
-        return;
-    }
-    auto obj = task->obj.lock();
-    while(task->running) {
-        sleep(5);
-        AppDebug("id:%d, task:%s", obj->GetId(), task->GetTaskName());
-    }
-    AppDebug("run ok");
-}
-    std::thread t(&TestThread, task);
-    t.detach();
-*/
-
 auto AlgTask::SearchEntry(void) {
     std::shared_ptr<Element> ret = nullptr;
     ele_mtx.lock();
@@ -318,13 +297,16 @@ auto AlgTask::GetNextEle(auto ele) {
     return next;
 }
 
-void AlgTask::AttachToThread(auto first) {
+void AlgTask::AttachToThread(auto first, auto task) {
     if(first->attach_to_thread) {
         return;
     }
-    TaskThread* t = new TaskThread();
-    thread_vec.push_back(t);
-    t->t_ele_vec.push_back(first);
+    auto tt = std::make_shared<TaskThread>();
+    task->thread_vec.push_back(tt);
+    auto t_ele = std::make_shared<TaskElement>(task);
+    std::shared_ptr<Element> p = t_ele;
+    *p = *first;
+    tt->t_ele_vec.push_back(t_ele);
     first->attach_to_thread = true;
 
     for(auto ele = first; ; ) {
@@ -335,46 +317,45 @@ void AlgTask::AttachToThread(auto first) {
         else if(next.size() == 1) {
             ele = next[0];
             if(ele->GetAsync()) {
-                t = new TaskThread();
-                thread_vec.push_back(t);
+                tt = std::make_shared<TaskThread>();
+                task->thread_vec.push_back(tt);
             }
-            t->t_ele_vec.push_back(ele);
+            t_ele = std::make_shared<TaskElement>(task);
+            std::shared_ptr<Element> p = t_ele;
+            *p = *ele;
+            tt->t_ele_vec.push_back(t_ele);
             ele->attach_to_thread = true;
         }
         else {
             for(size_t i = 0; i < next.size(); i ++) {
                 auto _ele = next[i];
-                AttachToThread(_ele);
+                AttachToThread(_ele, task);
             }
             break;
         }
     }
 }
 
-bool AlgTask::AssignToThreads(void) {
+void AlgTask::ResetEleAttachFlag(void) {
+    ele_mtx.lock();
+    for(size_t i = 0; i < ele_vec.size(); i ++) {
+        auto ele = ele_vec[i];
+        ele->attach_to_thread = false;
+    }
+    ele_mtx.unlock();
+}
+
+bool AlgTask::AssignToThreads(std::shared_ptr<TaskParams> task) {
     auto entry = SearchEntry();
     if(entry == nullptr) {
         AppWarn("search entry failed");
         return false;
     }
-    AttachToThread(entry);
-    AppDebug("alg:%s, attach ele to threads ok, thread num:%ld", name, thread_vec.size());
+    ResetEleAttachFlag();
+    task->thread_vec.clear();
+    AttachToThread(entry, task);
 
     return true;
-}
-
-void AlgTask::Start(TaskParams* task) {
-    for(size_t i = 0; i < thread_vec.size(); i ++) {
-        TaskThread* t = thread_vec[i];
-        for(size_t j = 0; j < t->t_ele_vec.size(); j ++) {
-            auto ele = t->t_ele_vec[j];
-            AppDebug("thread %ld, ele:%s", i, ele->GetName());
-        }
-    }
-}
-
-void AlgTask::Stop(TaskParams* task) {
-    AppDebug("TODO");
 }
 
 Element::Element(void) {
@@ -386,12 +367,24 @@ Element::Element(void) {
     attach_to_thread = false;
 }
 
+Element& Element::operator=(const Element& c) {
+    async = c.async;
+    strncpy(name, c.name, sizeof(name));
+    strncpy(path, c.path, sizeof(path));
+    strncpy(framework, c.framework, sizeof(framework));
+    params = c.params;
+    input_map = c.input_map;
+    output_map = c.output_map;
+    return *this;
+}
+
 Element::~Element(void) {
 }
 
 void Element::SetParams(char *str) {
-    params = std::make_unique<char[]>(strlen(str)+1);
-    strcpy(params.get(), str);
+    std::shared_ptr<char> p(new char[strlen(str)+1]);
+    strcpy(p.get(), str);
+    params = p;
 }
 
 void Element::Put2InputMap(auto _map) {

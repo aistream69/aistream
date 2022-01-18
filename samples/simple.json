@@ -19,7 +19,7 @@
         },
         {
             "name": "preview",
-            "path": "./plugins/lib/libpreview.so",
+            "path": "./plugins/official/libpreview.so",
             "async": "true",
             "input_map": [
                 {

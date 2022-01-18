@@ -19,7 +19,7 @@
         },
         {
             "name": "decode",
-            "path": "./plugins/lib/libjpegdec.so",
+            "path": "./lib/libjpegdec.so",
             "async": "true",
             "input_map": [
                 {

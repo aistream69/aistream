@@ -21,9 +21,35 @@
 #include <string.h>
 #include <memory>
 #include "pipeline.h"
+#include "framework.h"
 
 class Object;
-class TaskParams {
+
+class TaskElement : public Element {
+public:
+    TaskElement(std::shared_ptr<TaskParams> _task);
+    ~TaskElement(void);
+    bool Start(void);
+    bool Stop(void);
+    std::unique_ptr<Framework> framework;
+private:
+    std::shared_ptr<TaskParams> task;
+};
+
+class TaskThread : public std::enable_shared_from_this<TaskThread> {
+public:
+    TaskThread(void);
+    ~TaskThread(void);
+    std::vector<std::shared_ptr<TaskElement>> t_ele_vec;
+    void Start(std::shared_ptr<TaskParams> _task);
+    void Stop(void);
+private:
+    std::thread* t;
+    void ThreadFunc(void);
+    std::shared_ptr<TaskParams> task;
+};
+
+class TaskParams : public std::enable_shared_from_this<TaskParams> {
 public:
     TaskParams(std::shared_ptr<Object> _obj);
     ~TaskParams(void);
@@ -33,11 +59,13 @@ public:
     int Start(void);
     int Stop(bool sync = false);
     bool KeepAlive(void);
-    std::weak_ptr<Object> obj;
+    std::shared_ptr<Object> GetTaskObj(void);
+    std::vector<std::shared_ptr<TaskThread>> thread_vec;
     int running;
 private:
     char name[256];
     long int task_beat;
+    std::weak_ptr<Object> obj;
     std::unique_ptr<char[]> params;
     std::shared_ptr<AlgTask> alg;
 };

@@ -26,6 +26,7 @@
 #include "tensor.h"
 
 class MediaServer;
+class TaskParams;
 
 typedef struct {
     char key[256];
@@ -36,6 +37,7 @@ typedef struct {
 class Element {
 public:
     Element(void);
+    Element& operator=(const Element& c);
     ~Element(void);
     void SetName(const char* _name) {strncpy(name, _name, sizeof(name));}
     char* GetName(void) {return name;}
@@ -56,20 +58,11 @@ private:
     char path[256];
     char framework[256];
     bool async;
-    std::unique_ptr<char[]> params;
+    std::shared_ptr<char> params;
     std::vector<std::shared_ptr<KeyValue>> input_map;
     std::vector<std::shared_ptr<KeyValue>> output_map;
 };
 
-class TaskThread {
-public:
-    TaskThread(void) {}
-    ~TaskThread(void) {}
-    std::vector<std::shared_ptr<Element>> t_ele_vec;
-private:
-};
-
-class TaskParams;
 class AlgTask {
 public:
     AlgTask(MediaServer* _media);
@@ -80,20 +73,17 @@ public:
     void SetConfig(const char* cfg) {strncpy(config, cfg, sizeof(config));}
     void SetBatchSize(int val) {batch_size = val;}
     bool Put2ElementQue(auto ele);
-    bool AssignToThreads(void);
-    size_t GetThreadNum(void) {return thread_vec.size();}
-    void Start(TaskParams* task);
-    void Stop(TaskParams* task);
+    bool AssignToThreads(std::shared_ptr<TaskParams> task);
 private:
     char name[128];
     char config[256];
     int batch_size;
     std::mutex ele_mtx;
     std::vector<std::shared_ptr<Element>> ele_vec;
-    std::vector<TaskThread*> thread_vec;
     auto SearchEntry(void);
     auto GetNextEle(auto ele);
-    void AttachToThread(auto ele);
+    void AttachToThread(auto ele, auto task);
+    void ResetEleAttachFlag(void);
 };
 
 class Pipeline {

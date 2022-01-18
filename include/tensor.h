@@ -19,15 +19,73 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+
+#define MAX_DIMS    8
+
+typedef void* IHandle;
+
+typedef enum {
+    IMG_UNKNOWN = 0,
+    IMAGE_FORMAT_RGB,
+    IMAGE_FORMAT_BGR,
+    IMAGE_FORMAT_GRAY,
+} ImgFormat;
+
+typedef enum {
+    C_UNKNOWN = 0,
+    C_NCHW,
+    C_NHWC,
+} LayoutFormat;
+
+typedef enum {
+    DUNKNOWN = 0,
+    IINT8,
+    IINT16,
+    IINT32,
+    IINT64,
+    FFP16,
+    FFP32,
+    FFP64,
+    BBOOL,
+} IDataType;
+
+typedef struct {
+    int n_dims;
+    int d[MAX_DIMS];
+} IDims;
 
 typedef struct {
     char name[256];
-    //IDataType data_type;
-    //TensorImgFormat format;
-    //ImageFormat img_format;
-    //IDims dims;
-    int size;
+    IDataType data_type;
+    ImgFormat format;
+    LayoutFormat layout;
+    IDims dims;
 } TTensor;
+
+typedef struct {
+    char *buf;
+    int size;
+    int width;
+    int height;
+    TTensor tensor;
+} TBuffer;
+
+typedef struct {
+    int input_num;
+    TBuffer *input;
+    int output_num;
+    TBuffer *output;
+} TensorData;
+
+typedef struct {
+    char name[64];
+    const char* init;
+    const char* start;
+    const char* process;
+    const char* stop;
+    const char* release;
+} DLRegister;
 
 #endif
 

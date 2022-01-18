@@ -440,3 +440,10 @@ int GetFileSize(const char *filename) {
     return statbuf.st_size;
 }
 
+void HangUp(void) {
+    AppWarn("hang up");
+    while(1) {
+        sleep(10);
+    }
+}
+

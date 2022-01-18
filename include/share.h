@@ -29,6 +29,7 @@ typedef struct {
     int  val;
 } CommonParams;
 
+void HangUp(void);
 int DirCheck(const char *dir);
 int GetLocalIp(char host_ip[128]);
 std::unique_ptr<char[]> ReadFile2Buf(const char *filename);

@@ -19,7 +19,7 @@
         },
         {
             "name": "decode",
-            "path": "./plugins/release/decode/libdec.so",
+            "path": "./lib/libdec.so",
             "input_map": [
                 {
                     "key": "input",
@@ -35,7 +35,7 @@
         },
         {
             "name": "yuv2rgb",
-            "path": "./plugins/lib/libyuv2rgb.so",
+            "path": "./lib/libyuv2rgb.so",
             "input_map": [
                 {
                     "key": "input",
@@ -58,7 +58,7 @@
         },
         {
             "name": "preprocess",
-            "path": "./plugins/lib/libpreprocess.so",
+            "path": "./lib/libpreprocess.so",
             "input_map": [
                 {
                     "key": "input",
@@ -74,7 +74,7 @@
         },
         {
             "name": "yolov3",
-            "path": "./plugins/lib/tvm_yolov3.so",
+            "path": "./lib/tvm_yolov3.so",
             "framework": "tvm",
             "input_map": [
                 {
@@ -91,7 +91,7 @@
         },
         {
             "name": "postprocess",
-            "path": "./plugins/lib/libpostprocess.so",
+            "path": "./lib/libpostprocess.so",
             "input_map": [
                 {
                     "key": "input",
@@ -107,7 +107,7 @@
         },
         {
             "name": "tracker",
-            "path": "./plugins/lib/libtracker.so",
+            "path": "./lib/libtracker.so",
             "async": "true",
             "input_map": [
                 {
@@ -124,7 +124,7 @@
         },
         {
             "name": "rabbitmq",
-            "path": "./plugins/lib/librabbitmq.so",
+            "path": "./lib/librabbitmq.so",
             "input_map": [
                 {
                     "key": "input",
@@ -148,7 +148,7 @@
         },
         {
             "name": "preview",
-            "path": "./plugins/lib/libpreview.so",
+            "path": "./plugins/official/libpreview.so",
             "input_map": [
                 {
                     "key": "input",
@@ -167,7 +167,7 @@
         },
         {
             "name": "display",
-            "path": "./plugins/lib/libdisplay.so",
+            "path": "./lib/libdisplay.so",
             "input_map": [
                 {
                     "key": "input1",
