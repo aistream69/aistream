@@ -31,7 +31,7 @@ class TaskParams;
 typedef struct {
     char key[256];
     char val[256];
-    std::vector<std::shared_ptr<TTensor>> tensor;
+    //std::vector<std::shared_ptr<TTensor>> tensor;
 } KeyValue;
 
 class Element {
@@ -52,6 +52,7 @@ public:
     void SetAsync(bool val) {async = val;}
     bool GetAsync(void) {return async;}
     void SetParams(char *str);
+    auto GetParams(void) {return params;}
     bool attach_to_thread;
 private:
     char name[256];

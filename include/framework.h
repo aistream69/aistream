@@ -24,9 +24,9 @@ class Framework {
 public:
     Framework(void) {}
     ~Framework(void) {}
-    virtual int Init(void) {return 0;}
-    virtual int Start(char* path) {return 0;}
-    virtual int Process(void) {return 0;}
+    virtual int Init(char* path, ElementData* data) {return 0;}
+    virtual int Start(int channel, char* ele_params) {return 0;}
+    virtual int Process(TensorData* data) {return 0;}
     virtual int Stop(void) {return 0;}
     virtual int Release(void) {return 0;}
 private:

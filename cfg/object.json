@@ -1,8 +1,9 @@
-[
-    {
-        "rtsp": "librtsp.so"
+{
+    "rtsp": {
+        "lib": "plugins/official/librtsp.so"
     },
-    {
-        "text": "libtext.so"
+    "text": {
+        "lib": "plugins/official/libtext.so"
     }
-]
+}
+

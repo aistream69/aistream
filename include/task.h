@@ -32,7 +32,9 @@ public:
     bool Start(void);
     bool Stop(void);
     std::unique_ptr<Framework> framework;
+    ElementData data;
 private:
+    void ConnectElement(void);
     std::shared_ptr<TaskParams> task;
 };
 
@@ -40,6 +42,8 @@ class TaskThread : public std::enable_shared_from_this<TaskThread> {
 public:
     TaskThread(void);
     ~TaskThread(void);
+    // one thread can have one or more element, decided by async,
+    // or element is multi used
     std::vector<std::shared_ptr<TaskElement>> t_ele_vec;
     void Start(std::shared_ptr<TaskParams> _task);
     void Stop(void);

@@ -75,9 +75,16 @@ void ObjParams::Start(void) {
 
 Object::Object(MediaServer *_media)
   : media(_media) {
+    params = nullptr;
 }
 
 Object::~Object(void) {
+}
+
+void Object::SetParams(char *str) {
+    std::shared_ptr<char> p(new char[strlen(str)+1]);
+    strcpy(p.get(), str);
+    params = p;
 }
 
 bool Object::Put2TaskQue(std::shared_ptr<TaskParams> task) {

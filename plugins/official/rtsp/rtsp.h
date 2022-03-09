@@ -23,12 +23,20 @@
 
 class Rtsp : public Object {
 public:
-    Rtsp(MediaServer* _media):Object(_media) {}
-    void SetTcpEnable(int val) {tcp_enable = val;}
-    void SetRtspUrl(char *str) {strncpy(url, str, sizeof(url));}
+    Rtsp(MediaServer* _media):Object(_media) {
+        //tcp_enable = 0;
+        //memset(url, 0, sizeof(url));
+        memset(lib, 0, sizeof(lib));
+    }
+    ~Rtsp(void) {}
+    //void SetTcpEnable(int val) {tcp_enable = val;}
+    //void SetRtspUrl(char *str) {strncpy(url, str, sizeof(url));}
+    //char* GetRtspUrl(void) {return url;}
+    virtual char* GetPath(char* path);
 private:
-    char url[256];
-    int tcp_enable;
+    char lib[256];
+    //char url[256];
+    //int tcp_enable;
 };
 
 #endif

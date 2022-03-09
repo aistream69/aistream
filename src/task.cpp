@@ -109,15 +109,53 @@ TaskElement::TaskElement(std::shared_ptr<TaskParams> _task)
 TaskElement::~TaskElement(void) {
 }
 
-bool TaskElement::Start(void) {
-    char* framework_name = GetFramework();
-    printf("task:%s, ele:%s,path:%s\n", 
-            task->GetTaskName(), GetName(), GetPath());
-    if(!strcmp(GetName(), "object")) {
-        AppDebug("TODO:object");
-        sleep(11111);
+void TaskElement::ConnectElement(void) {
+    for(size_t i = 0; i < data.input.size(); i++) {
+        auto _queue = data.input[i];
+        auto _map = GetInputMap([](KeyValue* p, void* arg) {
+            char* name = (char* )arg;
+            if(!strncmp(p->key, name, sizeof(p->key))) {
+                return true;
+            }
+            else {
+                return false;
+            }
+        }, _queue->name);
+        if(_map == nullptr) {
+            AppWarn("%s, get input by %s failed", GetName(), _queue->name);
+            continue;
+        }
+        bool connect = false;
+        for(size_t j = 0; j < task->thread_vec.size() && !connect; j ++) {
+            auto tt = task->thread_vec[j];
+            for(size_t k = 0; k < tt->t_ele_vec.size(); k ++) {
+                auto ele = tt->t_ele_vec[k];
+                auto output = ele->GetOutputMap();
+                if(output == nullptr) {
+                    AppWarn("get output map failed, %s", ele->GetName());
+                    continue;
+                }
+                if(!strncmp(_map->val, output->val, sizeof(output->val))) {
+                    ele->data.output.push_back(_queue);
+                    connect = true;
+                    break;
+                }
+            }
+        }
+        if(!connect) {
+            AppWarn("connect %s %s:%s to previous failed", GetName(), _map->key, _map->val);
+        }
     }
-    else if(!strcmp(framework_name, "tvm")) {
+}
+
+bool TaskElement::Start(void) {
+    char* path = GetPath();
+    char* framework_name = GetFramework();
+    auto obj = task->GetTaskObj();
+    assert(obj != nullptr);
+
+    auto ele_params = GetParams();
+    if(!strcmp(framework_name, "tvm")) {
         AppDebug("TODO:tvm");
     }
     else if(!strcmp(framework_name, "tensorrt")) {
@@ -125,13 +163,33 @@ bool TaskElement::Start(void) {
     }
     else if(strlen(framework_name) == 0) {
         framework = std::make_unique<DynamicLib>();
+        if(!strcmp(GetName(), "object")) {
+            path = obj->GetPath(path);
+            ele_params = obj->GetParams();
+        }
     }
     else {
         AppWarn("unsupport framework:%s", framework_name);
     }
     assert(framework != nullptr);
-    framework->Init();
-    framework->Start(GetPath());
+
+    printf("task:%s, ele:%s,path:%s\n", task->GetTaskName(), GetName(), path);
+    if(framework->Init(path, &data) != 0) {
+        AppWarn("framework start failed, id:%d, %s", obj->GetId(), path);
+        return -1;
+    }
+    for(size_t j = 0; j < data.input.size(); j++) {
+        auto input = data.input[j];
+        input->running = &task->running;
+    }
+
+    char* params = ele_params != nullptr ? ele_params.get() : NULL;
+    if(framework->Start(obj->GetId(), params) != 0) {
+        AppWarn("framework start failed, id:%d, %s", obj->GetId(), path);
+        return -1;
+    }
+    // connect ele input to it's previous output
+    ConnectElement();
 
     return 0;
 }
@@ -139,6 +197,7 @@ bool TaskElement::Start(void) {
 bool TaskElement::Stop(void) {
     if(framework != nullptr) {
         framework->Stop();
+        framework->Release();
     }
     return 0;
 }
@@ -158,15 +217,43 @@ void TaskThread::ThreadFunc(void) {
     size_t i;
     for(i = 0; i < t_ele_vec.size(); i ++) {
         auto ele = t_ele_vec[i];
-        ele->Start();
+        if(ele->Start() != 0) {
+            task->running = 0;
+            break;
+        }
     }
     while(task->running) {
-        printf("id:%d\n", obj->GetId());
         for(i = 0; i < t_ele_vec.size(); i ++) {
+            TensorData tensor;
             auto ele = t_ele_vec[i];
-            ele->framework->Process();
+            for(size_t j = 0; j < ele->data.input.size(); j++) {
+                auto input = ele->data.input[j];
+                std::unique_lock<std::mutex> lock(input->mtx);
+                input->condition.wait(lock, [input] {
+                        return !input->_queue.empty() || !(*input->running);
+                    });
+                auto pkt = input->_queue.front();
+                input->_queue.pop();
+                tensor._in.push_back(pkt);
+            }
+            ele->framework->Process(&tensor);
+            for(size_t j = 0; j < ele->data.output.size() && tensor._out != nullptr; j ++) {
+                auto output = ele->data.output[j];
+                std::unique_lock<std::mutex> lock(output->mtx);
+                if(output->_queue.size() < (size_t)ele->data.queue_len) {
+                    output->_queue.push(tensor._out);
+                }
+                else {
+                    printf("warning, %s, put to queue failed, %s, quelen:%ld\n", 
+                            ele->GetName(), output->name, output->_queue.size());
+                }
+                output->condition.notify_one();
+            }
+            if(ele->data.sleep_usec) {
+                // Note: if t_ele_vec.size() > 1, please set sleep_usec correctly
+                usleep(ele->data.sleep_usec);
+            }
         }
-        sleep(111111);
     }
     for(i = 0; i < t_ele_vec.size(); i ++) {
         auto ele = t_ele_vec[i];

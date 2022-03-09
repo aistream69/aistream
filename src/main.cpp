@@ -30,6 +30,7 @@ static void MainProcess(void) {
         exit(-1);
     }
     else if(pid == 0) {
+        AppDebug("start main process, pid:%d", getpid());
         MediaServer *media = new MediaServer();
         media->Run();
         AppDebug("run ok");

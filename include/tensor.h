@@ -20,6 +20,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <vector>
+#include <queue>
+#include <condition_variable>
 
 #define MAX_DIMS    8
 
@@ -56,27 +59,80 @@ typedef struct {
 } IDims;
 
 typedef struct {
-    char name[256];
+    //char name[256];
     IDataType data_type;
     ImgFormat format;
     LayoutFormat layout;
     IDims dims;
 } TTensor;
 
+class Packet {
+public:
+    Packet(void* buf, size_t size) {
+        _data.resize(size); 
+        memcpy(_data.data(), buf, size);
+    };
+    ~Packet() {
+    } 
+
+    std::vector<char> _data;
+    //TTensor tensor;
+    //int width;
+    //int height;
+};
+
+class PacketQueue {
+public:
+    char name[256];
+    std::mutex mtx;
+    std::condition_variable condition;
+    std::queue<std::shared_ptr<Packet>> _queue;
+    int *running;
+};
+
+class ElementData {
+public:
+    ElementData(void) {
+        queue_len = 10000;
+        sleep_usec = 0;
+    }
+    ~ElementData(void) {}
+    // input: allocated by itself
+    // every element can have many inputs, connected to other elements
+    std::vector<std::shared_ptr<PacketQueue>> input;
+    // output: allocated by next users, mutex lock?
+    // every element have only one output, but the same data can be send to many other elements
+    std::vector<std::shared_ptr<PacketQueue>> output;
+    int queue_len;
+    int sleep_usec;
+};
+
+class TensorData {
+public:
+    TensorData(void) {
+        _out = nullptr;
+    }
+    ~TensorData(void) {}
+    // element support multi intput, but single output
+    std::vector<std::shared_ptr<Packet>> _in;
+    std::shared_ptr<Packet> _out;
+};
+
+/*
 typedef struct {
     char *buf;
     int size;
     int width;
     int height;
-    TTensor tensor;
-} TBuffer;
+    int frame_id;
+} Buffer;
 
-typedef struct {
-    int input_num;
-    TBuffer *input;
-    int output_num;
-    TBuffer *output;
-} TensorData;
+class TensorData_ {
+    int batch_size;
+    Buffer *input_ptr;
+    Buffer *output_ptr;
+};
+*/
 
 typedef struct {
     char name[64];

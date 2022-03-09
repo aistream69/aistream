@@ -19,18 +19,30 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "tensor.h"
 #include "framework.h"
+
+typedef int (*DLReg)(DLRegister**, int&);
+typedef int (*DLInit)(ElementData*);
+typedef IHandle (*DLStart)(int, char*);
+typedef int (*DLProcess)(IHandle, TensorData*);
+typedef int (*DLStop)(IHandle);
+typedef int (*DLRelease)(void);
 
 class DynamicLib : public Framework {
 public:
     DynamicLib(void);
     ~DynamicLib(void);
-    virtual int Init(void);
-    virtual int Start(char* path);
-    virtual int Process(void);
+    virtual int Init(char* path, ElementData* data);
+    virtual int Start(int channel, char* ele_params);
+    virtual int Process(TensorData* data);
     virtual int Stop(void);
     virtual int Release(void);
 private:
+    DLRegister *params;
+    void* dlhandle;
+    IHandle handle;
+    DLProcess process;
 };
 
 #endif

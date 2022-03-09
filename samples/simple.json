@@ -18,24 +18,44 @@
             ]
         },
         {
-            "name": "preview",
-            "path": "./plugins/official/libpreview.so",
-            "async": "true",
+            "name": "debug",
+            "path": "./plugins/debug/libdebug.so",
             "input_map": [
                 {
-                    "key": "input",
+                    "key": "debug_input_frame",
                     "val": "frame"
                 }
             ],
             "output_map": [
                 {
                     "key": "output",
-                    "val": "null",
-                    "params": {
-                        "type": "hls"
-                    }
+                    "val": "osd"
                 }
             ]
+        },
+        {
+            "name": "preview",
+            "path": "./plugins/official/libpreview.so",
+            "async": "true",
+            "input_map": [
+                {
+                    "key": "preview_input1_frame",
+                    "val": "frame"
+                },
+                {
+                    "key": "preview_input2_osd",
+                    "val": "osd"
+                }
+            ],
+            "output_map": [
+                {
+                    "key": "output",
+                    "val": "null"
+                }
+            ],
+            "params": {
+                "type": "hls"
+            }
         }
     ]
 }

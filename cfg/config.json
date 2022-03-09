@@ -7,6 +7,12 @@
         "enable": 1,
         "rest_port": 15515
     },
+    "obj": {
+        "rtsp": {
+            "queue_len": 50,
+            "sleep_usec": 200000
+        }
+    },
     "system": {
         "localhost": "10.2.2.70",
         "obj_max": 10000

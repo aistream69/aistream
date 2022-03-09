@@ -14,6 +14,16 @@
  ***************************************************************************************/
 
 #include "rtsp.h"
+#include "share.h"
 #include "log.h"
 
+char* Rtsp::GetPath(char* path) {
+    auto name = GetStrValFromFile(path, "rtsp", "lib");
+    if(name == nullptr) {
+        AppWarn("get path failed, %s", path);
+        return lib;
+    }
+    strncpy(lib, name.get(), sizeof(lib));
+    return lib;
+}
 

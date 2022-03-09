@@ -65,9 +65,9 @@ static void request_add_rtsp(struct evhttp_request* req, void* arg) {
     MediaServer* media = rest->media;
     ObjParams* obj_params = media->GetObjParams();
     int id = GetIntValFromJson(buf, "id");
-    int tcp_enable = GetIntValFromJson(buf, "data", "tcp_enable");
     auto url = GetStrValFromJson(buf, "data", "url");
-    tcp_enable = tcp_enable < 0 ? 0 : tcp_enable;
+    //int tcp_enable = GetIntValFromJson(buf, "data", "tcp_enable");
+    //tcp_enable = tcp_enable < 0 ? 0 : tcp_enable;
     if(id < 0 || url == nullptr) {
         AppWarn("get id or url failed, %s", buf);
         return;
@@ -79,8 +79,9 @@ static void request_add_rtsp(struct evhttp_request* req, void* arg) {
     }
     auto obj = std::make_shared<Rtsp>(media);
     obj->SetId(id);
-    obj->SetTcpEnable(tcp_enable);
-    obj->SetRtspUrl(url.get());
+    //obj->SetTcpEnable(tcp_enable);
+    //obj->SetRtspUrl(url.get());
+    obj->SetParams(buf);
     obj_params->Put2ObjQue(obj);
 }
 
@@ -111,6 +112,7 @@ static void request_add_gat1400(struct evhttp_request* req, void* arg) {
     }
     auto obj = std::make_shared<Gat1400>(media);
     obj->SetId(id);
+    obj->SetParams(buf);
     obj_params->Put2ObjQue(obj);
 }
 

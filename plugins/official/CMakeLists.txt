@@ -1,4 +1,6 @@
 
+set(CMAKE_CXX_FLAGS "-std=c++14 -Wall -O2 -g -rdynamic -Wno-deprecated-declarations -Wno-format-truncation")
+
 include_directories(
     "${PROJECT_ROOT_PATH}/include"
     )
@@ -6,6 +8,5 @@ include_directories(
 add_compile_options(-fPIC)
 
 add_library(preview SHARED preview/preview.cpp)
-
-#set(LIBRARY_OUTPUT_PATH ${PROJECT_ROOT_PATH}/work/slab/lib)
+add_library(rtsp SHARED rtsp/dl_rtsp.cpp)
 

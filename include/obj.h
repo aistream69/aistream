@@ -26,21 +26,25 @@
 
 class MediaServer;
 
-class Object {
+class Object : public std::enable_shared_from_this<Object> {
 public:
     Object(MediaServer* _media);
     ~Object(void);
     void SetId(int _id) {id = _id;}
     int GetId(void) {return id;}
+    virtual char* GetPath(char* path) {return path;}
     bool Put2TaskQue(std::shared_ptr<TaskParams> task);
     std::shared_ptr<TaskParams> GetTask(char *name);
     bool DelFromTaskQue(char *name);
     void TraverseTaskQue(void);
+    void SetParams(char *str);
+    auto GetParams(void) {return params;}
     MediaServer* media;
 private:
     int id;
     std::mutex task_mtx;
     std::vector<std::shared_ptr<TaskParams>> task_vec;
+    std::shared_ptr<char> params;
 };
 
 class ObjParams {
