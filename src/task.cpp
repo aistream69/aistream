@@ -29,8 +29,9 @@ TaskParams::~TaskParams(void) {
 }
 
 void TaskParams::SetParams(char *str) {
-    params = std::make_unique<char[]>(strlen(str)+1);
-    strcpy(params.get(), str);
+    std::shared_ptr<char> p(new char[strlen(str)+1]);
+    strcpy(p.get(), str);
+    params = p;
 }
 
 int TaskParams::Start(void) {
@@ -91,6 +92,10 @@ bool TaskParams::KeepAlive(void) {
     }
 
     return true;
+}
+
+void TaskParams::BeatAlive(MediaServer* media) {
+    task_beat = media->now_sec;
 }
 
 std::shared_ptr<Object> TaskParams::GetTaskObj(void) {
@@ -155,6 +160,7 @@ bool TaskElement::Start(void) {
     assert(obj != nullptr);
 
     auto ele_params = GetParams();
+    auto task_params = task->GetParams();
     if(!strcmp(framework_name, "tvm")) {
         AppDebug("TODO:tvm");
     }
@@ -165,7 +171,7 @@ bool TaskElement::Start(void) {
         framework = std::make_unique<DynamicLib>();
         if(!strcmp(GetName(), "object")) {
             path = obj->GetPath(path);
-            ele_params = obj->GetParams();
+            task_params = obj->GetParams();
         }
     }
     else {
@@ -174,7 +180,8 @@ bool TaskElement::Start(void) {
     assert(framework != nullptr);
 
     printf("task:%s, ele:%s,path:%s\n", task->GetTaskName(), GetName(), path);
-    if(framework->Init(path, &data) != 0) {
+    char* params = ele_params != nullptr ? ele_params.get() : NULL;
+    if(framework->Init(path, &data, params) != 0) {
         AppWarn("framework start failed, id:%d, %s", obj->GetId(), path);
         return -1;
     }
@@ -183,7 +190,7 @@ bool TaskElement::Start(void) {
         input->running = &task->running;
     }
 
-    char* params = ele_params != nullptr ? ele_params.get() : NULL;
+    params = task_params != nullptr ? task_params.get() : NULL;
     if(framework->Start(obj->GetId(), params) != 0) {
         AppWarn("framework start failed, id:%d, %s", obj->GetId(), path);
         return -1;
@@ -210,33 +217,89 @@ TaskThread::TaskThread(void) {
 TaskThread::~TaskThread(void) {
 }
 
+static int GetInput(TensorData& tensor, auto ele, auto obj) {
+    int ret = 0;
+    int frame_id = 0;
+    for(size_t j = 0; j < ele->data.input.size(); j++) {
+        auto input = ele->data.input[j];
+        std::unique_lock<std::mutex> lock(input->mtx);
+        input->condition.wait(lock, [input] {
+                return !input->_queue.empty() || !(*input->running);
+            });
+        if(!(*input->running)) {
+            ret = -1;
+            break;
+        }
+        auto pkt = input->_queue.front();
+        input->_queue.pop();
+        tensor._in.push_back(pkt);
+        printf("##test, id:%d, %s, input %ld, frameid:%d, size:%ld\n", 
+                obj->GetId(), ele->GetName(), j, pkt->_params.frame_id, pkt->_data.size());
+        if(frame_id > 0 && frame_id != pkt->_params.frame_id) {
+            AppWarn("%s, %ld, exception frameid %d!=%d", 
+                    ele->GetName(), j, pkt->_params.frame_id, frame_id);
+            ret = frame_id > pkt->_params.frame_id ? frame_id + 1 : pkt->_params.frame_id + 1;
+        }
+        frame_id = pkt->_params.frame_id;
+    }
+    return ret;
+}
+
+static void ResetInput(int frame_id, auto ele) {
+    size_t n;
+    int try_time = 3;
+    do {
+        n = 0;
+        for(size_t j = 0; j < ele->data.input.size(); j++) {
+            auto input = ele->data.input[j];
+            std::unique_lock<std::mutex> lock(input->mtx);
+            input->condition.wait(lock, [input] {
+                    return !input->_queue.empty() || !(*input->running);
+                });
+            if(!(*input->running)) {
+                try_time = 0;
+                break;
+            }
+            auto pkt = input->_queue.front();
+            if(pkt->_params.frame_id < frame_id) {
+                input->_queue.pop();
+                AppDebug("pop input %ld, frame_id:%d", j, pkt->_params.frame_id);
+            }
+            else if(pkt->_params.frame_id == frame_id) {
+                n ++;
+            }
+        }
+    } while(n != ele->data.input.size() && --try_time);
+}
+
 void TaskThread::ThreadFunc(void) {
     auto obj = task->GetTaskObj();
     assert(obj != nullptr);
+    MediaServer* media = obj->media;
 
-    size_t i;
-    for(i = 0; i < t_ele_vec.size(); i ++) {
+    for(size_t i = 0; i < t_ele_vec.size(); i ++) {
         auto ele = t_ele_vec[i];
         if(ele->Start() != 0) {
             task->running = 0;
             break;
         }
     }
+
     while(task->running) {
-        for(i = 0; i < t_ele_vec.size(); i ++) {
+        for(size_t i = 0; i < t_ele_vec.size(); i ++) {
             TensorData tensor;
             auto ele = t_ele_vec[i];
-            for(size_t j = 0; j < ele->data.input.size(); j++) {
-                auto input = ele->data.input[j];
-                std::unique_lock<std::mutex> lock(input->mtx);
-                input->condition.wait(lock, [input] {
-                        return !input->_queue.empty() || !(*input->running);
-                    });
-                auto pkt = input->_queue.front();
-                input->_queue.pop();
-                tensor._in.push_back(pkt);
+            int ret = GetInput(tensor, ele, obj);
+            if(ret != 0) {
+                if(ret < 0) {
+                    break;
+                }
+                ResetInput(ret, ele);
+                continue;
             }
-            ele->framework->Process(&tensor);
+            if(ele->framework->Process(&tensor) != 0) {
+                break;
+            }
             for(size_t j = 0; j < ele->data.output.size() && tensor._out != nullptr; j ++) {
                 auto output = ele->data.output[j];
                 std::unique_lock<std::mutex> lock(output->mtx);
@@ -254,13 +317,21 @@ void TaskThread::ThreadFunc(void) {
                 usleep(ele->data.sleep_usec);
             }
         }
-    }
-    for(i = 0; i < t_ele_vec.size(); i ++) {
-        auto ele = t_ele_vec[i];
-        ele->Stop();
+        task->BeatAlive(media);
     }
 
-    AppDebug("run ok");
+    for(size_t i = 0; i < t_ele_vec.size(); i ++) {
+        auto ele = t_ele_vec[i];
+        for(size_t j = 0; j < ele->data.output.size(); j ++) {
+            auto output = ele->data.output[j];
+            std::unique_lock<std::mutex> lock(output->mtx);
+            output->condition.notify_all();
+        }
+        ele->data.input.clear();
+        ele->data.output.clear();
+        ele->Stop();
+    }
+    AppDebug("%s, run ok", t_ele_vec[0]->GetName());
 }
 
 void TaskThread::Start(std::shared_ptr<TaskParams> _task) {
@@ -269,6 +340,15 @@ void TaskThread::Start(std::shared_ptr<TaskParams> _task) {
 }
 
 void TaskThread::Stop(void) {
+    for(size_t i = 0; i < t_ele_vec.size(); i ++) {
+        auto ele = t_ele_vec[i];
+        for(size_t j = 0; j < ele->data.output.size(); j ++) {
+            auto output = ele->data.output[j];
+            std::unique_lock<std::mutex> lock(output->mtx);
+            output->condition.notify_all();
+        }
+        ele->framework->Notify();
+    }
     if(t != nullptr) {
         if(t->joinable()) {
             t->join();

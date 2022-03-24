@@ -22,7 +22,7 @@
 typedef struct {
 } PreviewParams;
 
-extern "C" int PreviewInit(ElementData* data) {
+extern "C" int PreviewInit(ElementData* data, char* params) {
     auto queue = std::make_shared<PacketQueue>();
     strncpy(queue->name, "preview_input1_frame", sizeof(queue->name));
     data->input.push_back(queue);
@@ -43,7 +43,7 @@ extern "C" IHandle PreviewStart(int channel, char* params) {
 extern "C" int PreviewProcess(IHandle handle, TensorData* data) {
     for(size_t i = 0; i < data->_in.size(); i++) {
         auto pkt = data->_in[i];
-        AppDebug("##test, input %ld, size:%ld, %d", i, pkt->_data.size(), pkt->_data[0]);
+        AppDebug("##test, input %ld, size:%ld, data:%d", i, pkt->_data.size(), pkt->_data[0]);
     }
     return 0;
 }

@@ -20,16 +20,17 @@
 #include "log.h"
 
 typedef struct {
-} DebugParams;
+} DecodeParams;
 
-extern "C" int DebugInit(ElementData* data, char* params) {
+extern "C" int DecodeInit(ElementData* data, char* params) {
+    AppDebug("##test");
     auto queue = std::make_shared<PacketQueue>();
-    strncpy(queue->name, "debug_input_frame", sizeof(queue->name));
+    strncpy(queue->name, "decode_input", sizeof(queue->name));
     data->input.push_back(queue);
     return 0;
 }
 
-extern "C" IHandle DebugStart(int channel, char* params) {
+extern "C" IHandle DecodeStart(int channel, char* params) {
     AppDebug("##test");
     if(params != NULL) {
         AppDebug("params:%s", params);
@@ -37,7 +38,8 @@ extern "C" IHandle DebugStart(int channel, char* params) {
     return (IHandle)1;
 }
 
-extern "C" int DebugProcess(IHandle handle, TensorData* data) {
+extern "C" int DecodeProcess(IHandle handle, TensorData* data) {
+    //AppDebug("##test");
     static int cnt = 0;
     char buf[16];
     int size = 16;
@@ -52,12 +54,12 @@ extern "C" int DebugProcess(IHandle handle, TensorData* data) {
     return 0;
 }
 
-extern "C" int DebugStop(IHandle handle) {
+extern "C" int DecodeStop(IHandle handle) {
     AppDebug("##test");
     return 0;
 }
 
-extern "C" int DebugRelease(void) {
+extern "C" int DecodeRelease(void) {
     AppDebug("##test");
     return 0;
 }
@@ -65,12 +67,12 @@ extern "C" int DebugRelease(void) {
 extern "C" int DylibRegister(DLRegister** r, int& size) {
     size = 1; // reserved
     DLRegister* p = (DLRegister*)calloc(size, sizeof(DLRegister));
-    strncpy(p->name, "debug", sizeof(p->name));
-    p->init = "DebugInit";
-    p->start = "DebugStart";
-    p->process = "DebugProcess";
-    p->stop = "DebugStop";
-    p->release = "DebugRelease";
+    strncpy(p->name, "decode", sizeof(p->name));
+    p->init = "DecodeInit";
+    p->start = "DecodeStart";
+    p->process = "DecodeProcess";
+    p->stop = "DecodeStop";
+    p->release = "DecodeRelease";
     *r = p;
     return 0;
 }

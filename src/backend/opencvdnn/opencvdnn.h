@@ -13,23 +13,18 @@
  *
  ***************************************************************************************/
 
-#ifndef __AISTREAM_FRAMEWORK_H__
-#define __AISTREAM_FRAMEWORK_H__
+#ifndef __AISTREAM_OPENCVDNN_H__
+#define __AISTREAM_OPENCVDNN_H__
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "framework.h"
 
-class Framework {
+class OpencvDnn : public Framework {
 public:
-    Framework(void) {}
-    ~Framework(void) {}
-    virtual int Init(char* path, ElementData* data, char* _params = NULL) {return 0;}
-    virtual int Start(int channel, char* _params = NULL) {return 0;}
-    virtual int Process(TensorData* data) {return 0;}
-    virtual int Stop(void) {return 0;}
-    virtual int Notify(void) {return 0;}
-    virtual int Release(void) {return 0;}
+    OpencvDnn(void);
+    ~OpencvDnn(void);
 private:
 };
 

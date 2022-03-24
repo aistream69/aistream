@@ -28,4 +28,6 @@ add_subdirectory(work/cjson)
 add_subdirectory(plugins)
 
 include(cmake/libevent.cmake)
+include(cmake/opencv.cmake)
+include(cmake/rtsp.cmake)
 

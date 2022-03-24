@@ -18,11 +18,13 @@ include_directories(
     "${PLUGINS_OFFICIAL}/gat1400"
     "${PROJECT_ROOT_PATH}/work/cjson/inc"
     "${PROJECT_ROOT_PATH}/work/3rdparty/libevent/release/include"
+    "${PROJECT_ROOT_PATH}/work/3rdparty/opencv/release/include/opencv4"
     )
 
 link_directories(
     "${PROJECT_ROOT_PATH}/work/cjson/lib"
     "${PROJECT_ROOT_PATH}/work/3rdparty/libevent/release/lib"
+    "${PROJECT_ROOT_PATH}/work/3rdparty/opencv/release/lib"
     "${PROJECT_ROOT_PATH}/work/lib"
     )
 
@@ -47,6 +49,8 @@ add_executable(
 
 add_dependencies(${target} cjson)
 add_dependencies(${target} libevent)
+add_dependencies(${target} opencv)
+add_dependencies(${target} rtsplib)
 
 set_target_properties(${target} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 
@@ -55,6 +59,10 @@ target_link_libraries(
     -lcjson
     -levent_pthreads
     -levent
+    -lopencv_core 
+    -lopencv_imgproc 
+    -lopencv_imgcodecs 
+    -lopencv_highgui 
     -ldl
     -lpthread
     -fPIE

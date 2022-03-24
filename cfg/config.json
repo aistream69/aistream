@@ -10,7 +10,8 @@
     "obj": {
         "rtsp": {
             "queue_len": 50,
-            "sleep_usec": 200000
+            "framesize_max": 1024000,
+            "queue_len_max": 50
         }
     },
     "system": {

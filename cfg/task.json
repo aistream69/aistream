@@ -11,6 +11,10 @@
     {
       "name": "jpegdec",
       "config": "./samples/jpegdec.json"
+    },
+    {
+      "name": "face_capture",
+      "config": "./samples/face_detection.json"
     }
   ]
 }

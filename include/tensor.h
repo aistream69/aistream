@@ -66,19 +66,27 @@ typedef struct {
     IDims dims;
 } TTensor;
 
+typedef struct {
+    int width;
+    int height;
+    int frame_id;
+    //TTensor tensor;
+} HeadParams;
+
 class Packet {
 public:
-    Packet(void* buf, size_t size) {
+    Packet(void* buf, size_t size, HeadParams* params = nullptr) {
         _data.resize(size); 
         memcpy(_data.data(), buf, size);
+        if(params != nullptr) {
+            _params.frame_id = params->frame_id;
+        }
     };
     ~Packet() {
     } 
 
     std::vector<char> _data;
-    //TTensor tensor;
-    //int width;
-    //int height;
+    HeadParams _params;
 };
 
 class PacketQueue {
@@ -140,6 +148,7 @@ typedef struct {
     const char* start;
     const char* process;
     const char* stop;
+    const char* notify;
     const char* release;
 } DLRegister;
 

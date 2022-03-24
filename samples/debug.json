@@ -54,7 +54,6 @@
                 "resize": [416,416],
                 "normalation": "common"
             }
-            
         },
         {
             "name": "preprocess",

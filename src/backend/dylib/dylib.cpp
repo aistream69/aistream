@@ -34,7 +34,7 @@ DynamicLib::~DynamicLib(void) {
     }
 }
 
-int DynamicLib::Init(char* path, ElementData* data) {
+int DynamicLib::Init(char* path, ElementData* data, char* _params) {
     DLReg reg;
     char *error;
     dlhandle = dlopen(path, RTLD_LAZY);
@@ -62,12 +62,12 @@ int DynamicLib::Init(char* path, ElementData* data) {
         AppWarn("get func %s failed, %s", params->init, error);
         return -1;
     }
-    init(data);
+    init(data, _params);
 
     return 0;
 }
 
-int DynamicLib::Start(int channel, char* ele_params) {
+int DynamicLib::Start(int channel, char* _params) {
     char *error;
 
     if(params == NULL || dlhandle == NULL) {
@@ -78,7 +78,7 @@ int DynamicLib::Start(int channel, char* ele_params) {
         AppWarn("get func %s failed, %s", params->start, error);
         return -1;
     }
-    handle = start(channel, ele_params);
+    handle = start(channel, _params);
     if(handle == NULL) {
         AppWarn("dl start failed, %d, %s", channel, params->start);
         return -1;
@@ -87,6 +87,13 @@ int DynamicLib::Start(int channel, char* ele_params) {
     if((error = dlerror()) != NULL) {
         AppWarn("get func %s failed, %s", params->process, error);
         return -1;
+    }
+    if(params->notify != NULL) {
+        process = (DLProcess)dlsym(dlhandle, params->process);
+        if((error = dlerror()) != NULL) {
+            AppWarn("get func %s failed, %s", params->process, error);
+            return -1;
+        }
     }
 
     return 0;
@@ -110,6 +117,25 @@ int DynamicLib::Stop(void) {
     }
     stop(handle);
     handle = NULL;
+
+    return 0;
+}
+
+int DynamicLib::Notify(void) {
+    char *error;
+
+    if(params == NULL || dlhandle == NULL) {
+        return -1;
+    }
+    if(params->notify == NULL) {
+        return 0;
+    }
+    DLNotify notify = (DLNotify)dlsym(dlhandle, params->notify);
+    if((error = dlerror()) != NULL) {
+        AppWarn("get func %s failed, %s", params->notify, error);
+        return -1;
+    }
+    notify(handle);
 
     return 0;
 }

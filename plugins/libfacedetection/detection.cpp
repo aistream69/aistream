@@ -20,24 +20,29 @@
 #include "log.h"
 
 typedef struct {
-} DebugParams;
+} DetectionParams;
 
-extern "C" int DebugInit(ElementData* data, char* params) {
+extern "C" int DetectionInit(ElementData* data, char* params) {
+    AppDebug("##test");
+    if(params != NULL) {
+        AppDebug("params:%s", params);
+    }
     auto queue = std::make_shared<PacketQueue>();
-    strncpy(queue->name, "debug_input_frame", sizeof(queue->name));
+    strncpy(queue->name, "detection_input", sizeof(queue->name));
     data->input.push_back(queue);
     return 0;
 }
 
-extern "C" IHandle DebugStart(int channel, char* params) {
-    AppDebug("##test");
+extern "C" IHandle DetectionStart(int channel, char* params) {
+    AppDebug("##test, %lx", (long int)params);
     if(params != NULL) {
         AppDebug("params:%s", params);
     }
     return (IHandle)1;
 }
 
-extern "C" int DebugProcess(IHandle handle, TensorData* data) {
+extern "C" int DetectionProcess(IHandle handle, TensorData* data) {
+    //AppDebug("##test");
     static int cnt = 0;
     char buf[16];
     int size = 16;
@@ -52,12 +57,12 @@ extern "C" int DebugProcess(IHandle handle, TensorData* data) {
     return 0;
 }
 
-extern "C" int DebugStop(IHandle handle) {
+extern "C" int DetectionStop(IHandle handle) {
     AppDebug("##test");
     return 0;
 }
 
-extern "C" int DebugRelease(void) {
+extern "C" int DetectionRelease(void) {
     AppDebug("##test");
     return 0;
 }
@@ -65,12 +70,12 @@ extern "C" int DebugRelease(void) {
 extern "C" int DylibRegister(DLRegister** r, int& size) {
     size = 1; // reserved
     DLRegister* p = (DLRegister*)calloc(size, sizeof(DLRegister));
-    strncpy(p->name, "debug", sizeof(p->name));
-    p->init = "DebugInit";
-    p->start = "DebugStart";
-    p->process = "DebugProcess";
-    p->stop = "DebugStop";
-    p->release = "DebugRelease";
+    strncpy(p->name, "detection", sizeof(p->name));
+    p->init = "DetectionInit";
+    p->start = "DetectionStart";
+    p->process = "DetectionProcess";
+    p->stop = "DetectionStop";
+    p->release = "DetectionRelease";
     *r = p;
     return 0;
 }

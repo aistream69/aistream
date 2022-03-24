@@ -1,0 +1,64 @@
+{
+    "batch_size": 1,
+    "pipeline": [
+        {
+            "name": "object",
+            "path": "cfg/object.json",
+            "input_map": [
+                {
+                    "key": "input",
+                    "val": "entry"
+                }
+            ],
+            "output_map": [
+                {
+                    "key": "output",
+                    "val": "frame"
+                }
+            ]
+        },
+        {
+            "name": "decode",
+            "path": "./plugins/official/libdecode.so",
+            "async": "true",
+            "input_map": [
+                {
+                    "key": "decode_input",
+                    "val": "frame"
+                }
+            ],
+            "output_map": [
+                {
+                    "key": "decode_output",
+                    "val": "rgb"
+                }
+            ]
+        },
+        {
+            "name": "detection",
+            "path": "./plugins/libfacedetection/libdetection.so",
+            "async": "true",
+            "input_map": [
+                {
+                    "key": "detection_input",
+                    "val": "rgb"
+                }
+            ],
+            "output_map": [
+                {
+                    "key": "detection_output",
+                    "val": "null"
+                }
+            ],
+            "params": {
+              "model": "./samples/face_capture/data/yunet_120x160.onnx",
+              "backend_id": 0,
+              "target_id": 0,
+              "score_threshold": 0.9,
+              "nms_threshold": 0.3,
+              "top_k": 5000
+            }
+        }
+    ]
+}
+
