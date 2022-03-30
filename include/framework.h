@@ -23,7 +23,7 @@
 class Framework {
 public:
     Framework(void) {}
-    ~Framework(void) {}
+    virtual ~Framework(void) {}
     virtual int Init(char* path, ElementData* data, char* _params = NULL) {return 0;}
     virtual int Start(int channel, char* _params = NULL) {return 0;}
     virtual int Process(TensorData* data) {return 0;}

@@ -17,6 +17,7 @@
 
 ConfigParams::ConfigParams(MediaServer* _media)
   : media(_media) {
+      out_params = nullptr;
 }
 
 ConfigParams::~ConfigParams(void) {
@@ -41,6 +42,15 @@ bool ConfigParams::Read(const char *cfg) {
     else {
         GetLocalIp(local_ip);
     }
+    NginxInit(nginx);
+    AppDebug("nginx path:%s, http_port:%d", nginx.workdir, nginx.http_port);
+    
     return true;
+}
+
+void ConfigParams::SetOutput(char *str) {
+    std::shared_ptr<char> p(new char[strlen(str)+1]);
+    strcpy(p.get(), str);
+    out_params = p;
 }
 

@@ -16,6 +16,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <thread>
 #include "tensor.h"
 #include "config.h"
 #include "share.h"
@@ -27,11 +28,40 @@ typedef struct {
     int frame_id;
     std::mutex mtx;
     std::condition_variable condition;
-    std::queue<std::shared_ptr<Packet>> _queue;
+    std::queue<Packet*> _queue;
     RtspPlayer player;
     int queue_len_max;
+    std::thread* t;
+    long int rtsp_beat;
     int running;
 } RtspParams;
+
+static long int _now_sec = 0;
+static void RtspDaemon(RtspParams* rtsp_params) {
+    struct timeval tv;
+    RtspPlayer* player = &rtsp_params->player;
+
+    gettimeofday(&tv, NULL);
+    _now_sec = tv.tv_sec;
+    rtsp_params->rtsp_beat = _now_sec;
+    while(rtsp_params->running) {
+        gettimeofday(&tv, NULL);
+        _now_sec = tv.tv_sec;
+        if(_now_sec - rtsp_params->rtsp_beat > 5) {
+            AppWarn("id:%d,detected exception,restart it ...", rtsp_params->id);
+            if(player->playhandle != NULL) {
+                RtspPlayerStop(player);
+            }
+            if(RtspPlayerStart(player)) {
+                AppError("start play %s failed ", player->url);
+            }
+            rtsp_params->rtsp_beat = _now_sec;
+        }
+        sleep(3);
+    }
+
+    AppDebug("run ok");
+}
 
 static int RtspCallback(unsigned char *buf, int size, void *arg) {
     HeadParams params;
@@ -40,9 +70,9 @@ static int RtspCallback(unsigned char *buf, int size, void *arg) {
     //printf("rtsp,id:%d,frameid:%d,size:%d,%02x:%02x:%02x:%02x:%02x\n", 
     //        rtsp_params->id, rtsp_params->frame_id, size, buf[0], buf[1], buf[2], buf[3], buf[4]);
     params.frame_id = ++rtsp_params->frame_id;
-    auto _packet = std::make_shared<Packet>(buf, size, &params);
     std::unique_lock<std::mutex> lock(rtsp_params->mtx);
     if(rtsp_params->_queue.size() < (size_t)rtsp_params->queue_len_max) {
+        auto _packet = new Packet(buf, size, &params);
         rtsp_params->_queue.push(_packet);
     }
     else {
@@ -50,12 +80,13 @@ static int RtspCallback(unsigned char *buf, int size, void *arg) {
                 rtsp_params->id, rtsp_params->_queue.size());
     }
     rtsp_params->condition.notify_one();
+    rtsp_params->rtsp_beat = _now_sec;
 
     return 0;
 }
 
 extern "C" int RtspInit(ElementData* data, char* params) {
-    data->queue_len = GetIntValFromFile(CONFIG_FILE, "obj", "rtsp", "queue_len");
+    data->queue_len = GetIntValFromFile(CONFIG_FILE, "video", "queue_len");
     if(data->queue_len < 0) {
         data->queue_len = 50;
     }
@@ -86,7 +117,7 @@ extern "C" IHandle RtspStart(int channel, char* params) {
     RtspPlayer* player = &rtsp_params->player;
     player->cb = RtspCallback;
     player->streamUsingTCP = tcp_enable;
-    player->buffersize = GetIntValFromFile(CONFIG_FILE, "obj", "rtsp", "framesize_max");
+    player->buffersize = GetIntValFromFile(CONFIG_FILE, "video", "framesize_max");
     player->buffersize = player->buffersize > 0 ? player->buffersize : 1024000;
     strncpy((char *)player->url, url.get(), sizeof(player->url));
     player->arg = rtsp_params;
@@ -95,9 +126,10 @@ extern "C" IHandle RtspStart(int channel, char* params) {
         delete rtsp_params;
         return NULL;
     }
-    rtsp_params->queue_len_max = GetIntValFromFile(CONFIG_FILE, "obj", "rtsp", "queue_len_max");
+    rtsp_params->queue_len_max = GetIntValFromFile(CONFIG_FILE, "video", "queue_len");
     rtsp_params->queue_len_max = rtsp_params->queue_len_max > 0 ? rtsp_params->queue_len_max : 50;
     rtsp_params->running = 1;
+    rtsp_params->t = new std::thread(&RtspDaemon, rtsp_params);
 
     return rtsp_params;
 }
@@ -111,7 +143,7 @@ extern "C" int RtspProcess(IHandle handle, TensorData* data) {
     if(!rtsp_params->running) {
         return -1;
     }
-    data->_out = rtsp_params->_queue.front();
+    data->tensor_buf.output = rtsp_params->_queue.front();
     rtsp_params->_queue.pop();
     return 0;
 }
@@ -119,13 +151,28 @@ extern "C" int RtspProcess(IHandle handle, TensorData* data) {
 extern "C" int RtspStop(IHandle handle) {
     RtspParams* rtsp_params = (RtspParams*)handle;
     if(rtsp_params == NULL) {
-        AppWarn("id:%d, player is null", rtsp_params->id);
+        AppWarn("rtsp params is null");
         return -1;
     }
     rtsp_params->running = 0;
+    if(rtsp_params->t != nullptr) {
+        if(rtsp_params->t->joinable()) {
+            rtsp_params->t->join();
+        }
+        delete rtsp_params->t;
+        rtsp_params->t = nullptr;
+    }
     RtspPlayer *player = &rtsp_params->player;
     if(player->playhandle != NULL) {
         RtspPlayerStop(player);
+    }
+    std::unique_lock<std::mutex> lock(rtsp_params->mtx);
+    while(!rtsp_params->_queue.empty()) {
+        Packet* pkt = rtsp_params->_queue.front();
+        rtsp_params->_queue.pop();
+        if(pkt != nullptr) {
+            delete pkt;
+        }
     }
     delete rtsp_params;
     return 0;

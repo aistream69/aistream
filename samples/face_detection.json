@@ -19,8 +19,7 @@
         },
         {
             "name": "decode",
-            "path": "./plugins/official/libdecode.so",
-            "async": "true",
+            "path": "./plugins/official/libcpudecode.so",
             "input_map": [
                 {
                     "key": "decode_input",
@@ -37,7 +36,6 @@
         {
             "name": "detection",
             "path": "./plugins/libfacedetection/libdetection.so",
-            "async": "true",
             "input_map": [
                 {
                     "key": "detection_input",
@@ -47,17 +45,56 @@
             "output_map": [
                 {
                     "key": "detection_output",
-                    "val": "null"
+                    "val": "obj"
                 }
             ],
             "params": {
-              "model": "./samples/face_capture/data/yunet_120x160.onnx",
+              "model": "./data/model/libfacedetection/yunet_120x160.onnx",
               "backend_id": 0,
               "target_id": 0,
               "score_threshold": 0.9,
               "nms_threshold": 0.3,
               "top_k": 5000
             }
+        },
+        {
+            "name": "tracker_capture",
+            "path": "./plugins/tracker/libtracker.so",
+            "input_map": [
+                {
+                    "key": "tracker_input1",
+                    "val": "obj"
+                },
+                {
+                    "key": "tracker_input2",
+                    "val": "rgb"
+                }
+            ],
+            "output_map": [
+                {
+                    "key": "capture",
+                    "val": "json"
+                }
+            ],
+            "params": {
+              "capture_line": 0.66
+            }
+        },
+        {
+            "name": "rabbitmq",
+            "path": "./plugins/official/librabbitmqq.so",
+            "input_map": [
+                {
+                    "key": "rabbitmq_input",
+                    "val": "json"
+                }
+            ],
+            "output_map": [
+                {
+                    "key": "rabbitmq_output",
+                    "val": "null"
+                }
+            ]
         }
     ]
 }

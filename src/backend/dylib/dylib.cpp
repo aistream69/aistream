@@ -63,6 +63,14 @@ int DynamicLib::Init(char* path, ElementData* data, char* _params) {
         return -1;
     }
     init(data, _params);
+    for(int i = 0; i < MAX_DIMS; i ++) {
+        if(strlen(data->input_name[i]) == 0) {
+            break;
+        }
+        auto queue = std::make_shared<PacketQueue>();
+        strncpy(queue->name, data->input_name[i], sizeof(queue->name));
+        data->input.push_back(queue);
+    }
 
     return 0;
 }
@@ -100,7 +108,18 @@ int DynamicLib::Start(int channel, char* _params) {
 }
 
 int DynamicLib::Process(TensorData* data) {
+    TensorBuffer& tensor_buf = data->tensor_buf;
+    for(size_t i = 0; i < data->_in.size(); i++) {
+        auto pkt = data->_in[i];
+        tensor_buf.input[i] = pkt.get();
+    }
+    tensor_buf.input_num = data->_in.size();
     process(handle, data);
+    auto pkt = tensor_buf.output;
+    if(pkt != nullptr) {
+        std::shared_ptr<Packet> _packet(pkt);
+        data->_out = _packet;
+    }
     return 0;
 }
 
@@ -152,6 +171,7 @@ int DynamicLib::Release(void) {
         return -1;
     }
     release();
+    // if use shared_ptr in dlopen dynamic Library, don't dlclose it
     if(dlhandle != NULL) {
         dlclose(dlhandle);
         dlhandle = NULL;

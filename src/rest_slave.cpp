@@ -50,6 +50,32 @@ static void request_system_alive(struct evhttp_request* req, void* arg) {
 
 /**********************************************************
 {
+    "type": "mq",
+    "data": {
+        "host": "192.168.0.10",
+        "port": 5672,
+        "username": "guest",
+        "password": "guest",
+        "exchange": "amq.direct",
+        "routingkey": ""
+    }
+}
+**********************************************************/
+static void request_set_output(struct evhttp_request* req, void* arg) {
+    request_first_stage;
+    CommonParams* params = (CommonParams* )arg;
+    char* buf = (char* )params->arga;
+    Restful* rest = (Restful* )params->argc;
+    MediaServer* media = rest->media;
+    ConfigParams* config = media->GetConfig();
+    auto _params = GetObjBufFromJson(buf, "data");
+    if(_params != nullptr) {
+        config->SetOutput(_params.get());
+    }
+}
+
+/**********************************************************
+{
   "id":99,
   "data":{
     "tcp_enable":0,
@@ -238,6 +264,7 @@ static UrlMap rest_url_map[] = {
     {"/api/system/login",       request_login},
     {"/api/system/logout",      request_logout},
     {"/api/system/init",        request_system_init},
+    {"/api/system/set/output",  request_set_output},
     {"/api/system/alive",       request_system_alive},
     {"/api/obj/add/rtsp",       request_add_rtsp},
     {"/api/obj/add/rtmp",       request_add_rtmp},

@@ -23,14 +23,12 @@ typedef struct {
 } DebugParams;
 
 extern "C" int DebugInit(ElementData* data, char* params) {
-    auto queue = std::make_shared<PacketQueue>();
-    strncpy(queue->name, "debug_input_frame", sizeof(queue->name));
-    data->input.push_back(queue);
+    strncpy(data->input_name[0], "debug_input_frame", sizeof(data->input_name[0]));
+    //data->sleep_usec = 40000;
     return 0;
 }
 
 extern "C" IHandle DebugStart(int channel, char* params) {
-    AppDebug("##test");
     if(params != NULL) {
         AppDebug("params:%s", params);
     }
@@ -39,26 +37,32 @@ extern "C" IHandle DebugStart(int channel, char* params) {
 
 extern "C" int DebugProcess(IHandle handle, TensorData* data) {
     static int cnt = 0;
-    char buf[16];
-    int size = 16;
+    int size = 20480000;
+    char* buf = (char *)malloc(size);
+    if(buf == NULL) {
+        AppError("malloc failed");
+        return -1;
+    }
     memset(buf, ++cnt, size);
     HeadParams params = {0};
-    for(size_t i = 0; i < data->_in.size(); i++) {
-        auto pkt = data->_in[i];
+    // input
+    TensorBuffer& tensor_buf = data->tensor_buf;
+    for(size_t i = 0; i < tensor_buf.input_num; i++) {
+        auto pkt = tensor_buf.input[i];
         params.frame_id = pkt->_params.frame_id;
     }
-    auto _packet = std::make_shared<Packet>(buf, 16, &params);
-    data->_out = _packet;
+    // output
+    auto _packet = new Packet(buf, size, &params);
+    tensor_buf.output = _packet;
+    free(buf);
     return 0;
 }
 
 extern "C" int DebugStop(IHandle handle) {
-    AppDebug("##test");
     return 0;
 }
 
 extern "C" int DebugRelease(void) {
-    AppDebug("##test");
     return 0;
 }
 

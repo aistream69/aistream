@@ -130,5 +130,16 @@ void Object::TraverseTaskQue(void) {
         }
     }
     task_mtx.unlock();
+    CheckWorkDir();
+}
+
+void Object::CheckWorkDir(void) {
+    struct tm _time;
+    char path[URL_LEN*2], date[32];
+    ConfigParams* config = media->GetConfig();
+    localtime_r(&media->now_sec, &_time);
+    snprintf(date, sizeof(date), "%d%02d%02d", _time.tm_year + 1900, _time.tm_mon + 1, _time.tm_mday);
+    snprintf(path, sizeof(path), "%s/image/%s/%d", config->nginx.workdir, date, id);
+    DirCheck(path);
 }
 

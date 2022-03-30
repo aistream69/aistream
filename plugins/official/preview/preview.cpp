@@ -20,41 +20,49 @@
 #include "log.h"
 
 typedef struct {
+    int id;
+    int frame_id;
 } PreviewParams;
 
 extern "C" int PreviewInit(ElementData* data, char* params) {
-    auto queue = std::make_shared<PacketQueue>();
-    strncpy(queue->name, "preview_input1_frame", sizeof(queue->name));
-    data->input.push_back(queue);
-    queue = std::make_shared<PacketQueue>();
-    strncpy(queue->name, "preview_input2_osd", sizeof(queue->name));
-    data->input.push_back(queue);
+    strncpy(data->input_name[0], "preview_input1_frame", sizeof(data->input_name[0]));
+    strncpy(data->input_name[1], "preview_input2_osd", sizeof(data->input_name[1]));
     return 0;
 }
 
 extern "C" IHandle PreviewStart(int channel, char* params) {
-    AppDebug("##test");
     if(params != NULL) {
         AppDebug("params:%s", params);
     }
-    return (IHandle)1;
+    PreviewParams* preview_params = (PreviewParams* )calloc(1, sizeof(PreviewParams));
+    preview_params->id = channel;
+    return preview_params;
 }
 
 extern "C" int PreviewProcess(IHandle handle, TensorData* data) {
-    for(size_t i = 0; i < data->_in.size(); i++) {
-        auto pkt = data->_in[i];
-        AppDebug("##test, input %ld, size:%ld, data:%d", i, pkt->_data.size(), pkt->_data[0]);
+    PreviewParams* preview_params = (PreviewParams* )handle;
+    TensorBuffer& tensor_buf = data->tensor_buf;
+    if(preview_params->frame_id % 200 == 0) {
+        for(size_t i = 0; i < tensor_buf.input_num; i++) {
+            auto pkt = tensor_buf.input[i];
+            printf("##test, preview, id:%d, frameid:%d, "
+                    "input %ld, size:%ld, data:%02x:%02x:%02x:%02x:%02x\n", 
+                preview_params->id, preview_params->frame_id, i, 
+                pkt->_size, pkt->_data[0], pkt->_data[1], 
+                pkt->_data[2], pkt->_data[3], pkt->_data[4]);
+        }
     }
+    preview_params->frame_id ++;
     return 0;
 }
 
 extern "C" int PreviewStop(IHandle handle) {
-    AppDebug("##test");
+    PreviewParams* preview_params = (PreviewParams* )handle;
+    free(preview_params);
     return 0;
 }
 
 extern "C" int PreviewRelease(void) {
-    AppDebug("##test");
     return 0;
 }
 

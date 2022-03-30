@@ -12,6 +12,9 @@ endif()
 if(NOT EXISTS "samples")
     execute_process(COMMAND ln -s ../samples samples)
 endif()
+if(NOT EXISTS "data")
+    execute_process(COMMAND ln -s ../work/data data)
+endif()
 
 set(PROJECT_ROOT_PATH "${AISTREAM_SOURCE_DIR}")
 
@@ -29,5 +32,8 @@ add_subdirectory(plugins)
 
 include(cmake/libevent.cmake)
 include(cmake/opencv.cmake)
+include(cmake/ffmpeg.cmake)
 include(cmake/rtsp.cmake)
+include(cmake/eigen.cmake)
+include(cmake/rabbitmq.cmake)
 

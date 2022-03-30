@@ -99,8 +99,8 @@ static bool ParseElement(char* ptr, const char* alg_name, auto alg) {
             ele->SetFramework(framework.get());
         }
         auto async = GetStrValFromJson(arrbuf.get(), "async");
-        if(async != nullptr && !strcmp(async.get(), "true")) {
-            ele->SetAsync(true);
+        if(async != nullptr && !strcmp(async.get(), "false")) {
+            ele->SetAsync(false);
         }
         auto params = GetObjBufFromJson(arrbuf.get(), "params");
         if(params != nullptr) {
@@ -362,7 +362,11 @@ Element::Element(void) {
     memset(name, 0, sizeof(name));
     memset(path, 0, sizeof(path));
     memset(framework, 0, sizeof(framework));
-    async = false;
+    // FIXME: it is danger to set async to be false, for example tracker_capture has two
+    // input, rgb and detection. if detection and tracker_capture are in one thread, when
+    // detection run slower, tracker_capture will block in ResetInput, waiting detection,
+    // and detection will block in condition.wait
+    async = true;
     params = nullptr;
     attach_to_thread = false;
 }

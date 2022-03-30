@@ -41,6 +41,7 @@
 #include <ctype.h>
 #include <execinfo.h>
 #include <memory>
+#include "share.h"
 #include "cJSON.h"
 #include "log.h"
 
@@ -166,6 +167,19 @@ int ReadFile2(const char *filename, void *buf, int max) {
     int n = fread(buf, 1, f_stat.st_size, fp);
     fclose(fp);
     return n;
+}
+
+int WriteFile(const char *filename, void *buf, int size, const char *mode) {
+    FILE *fp = fopen(filename, mode);
+    if(fp == NULL) {
+        AppError("fopen %s failed", filename);
+        return -1;
+    }
+    if(buf != NULL) {
+        fwrite(buf, 1, size, fp);
+    }
+    fclose(fp);
+    return 0;
 }
 
 int GetIntValFromJson(char *buf, const char *name1, const char *name2, const char *name3) {
@@ -433,11 +447,125 @@ end:
     return val;
 }
 
+double GetDoubleValFromJson(char *buf, const char *name1, const char *name2, const char *name3) {
+    char name[256];
+    double val = -1;
+    cJSON *root, *pSub1, *pSub2, *pSub3;
+
+    root = cJSON_Parse(buf);
+    if(root == NULL) {
+        AppError("parse json err, buf:%s", buf);
+        goto end;
+    }
+    if(name1 == NULL) {
+        AppError("name1 is null");
+        goto end;
+    }
+    strncpy(name, name1, 256);
+    pSub1 = cJSON_GetObjectItem(root, name);
+    if(pSub1 == NULL) {
+        //printf("get json null, %s\n", name);
+        goto end;
+    }
+    if(name2 == NULL) {
+        val = pSub1->valuedouble;
+        goto end;
+    }
+    strncpy(name, name2, 256);
+    pSub2 = cJSON_GetObjectItem(pSub1, name);
+    if(pSub2 == NULL) {
+        //printf("get json null, %s\n", name);
+        goto end;
+    }
+    if(name3 == NULL) {
+        val = pSub2->valuedouble;
+        goto end;
+    }
+    strncpy(name, name3, 256);
+    pSub3 = cJSON_GetObjectItem(pSub2, name);
+    if(pSub3 == NULL) {
+        //printf("get json null, %s\n", name);
+        goto end;
+    }
+    val = pSub3->valuedouble;
+end:
+    if(root != NULL) {
+        cJSON_Delete(root);
+    }
+    return val;
+}
+
+double GetDoubleValFromFile(const char *filename, 
+        const char *name1, const char *name2, const char *name3) {
+    auto buf = ReadFile2Buf(filename);
+    if(buf == nullptr) {
+        AppWarn("%s, ReadFile2Buf failed", filename);
+        return -1;
+    }
+    return GetDoubleValFromJson(buf.get(), name1, name2, name3);
+}
 
 int GetFileSize(const char *filename) {
     struct stat statbuf;
     stat(filename, &statbuf);
     return statbuf.st_size;
+}
+
+static int GetNginxPort(char* nginx_config_path, int& port) {
+    char buf[256];
+    FILE* fp = fopen(nginx_config_path, "rb");
+    if(fp == NULL) {
+        AppWarn("fopen %s failed", nginx_config_path);
+        return -1;
+    }
+    while(fgets(buf, sizeof(buf), fp)!=NULL) {
+        if(strstr(buf, "listen") == NULL) {
+            continue;
+        }
+        sscanf(buf, "%*s%d;", &port);
+        break;
+    }
+    fclose(fp);
+    return 0;
+}
+
+static int GetNginxRoot(char* nginx_config_path, char* workdir) {
+    char buf[256];
+    FILE* fp = fopen(nginx_config_path, "rb");
+    if(fp == NULL) {
+        AppWarn("fopen %s failed", nginx_config_path);
+        return -1;
+    }
+    while(fgets(buf, sizeof(buf), fp)!=NULL) {
+        if(strstr(buf, "root") == NULL) {
+            continue;
+        }
+        sscanf(buf, "%*s%*[ ]%[^;]", workdir);
+        break;
+    }
+    fclose(fp);
+    return 0;
+}
+
+void NginxInit(NginxParams& nginx) {
+    char cfg_file[512];
+    memset(&nginx, 0, sizeof(nginx));
+    auto nginx_path = GetStrValFromFile(CONFIG_FILE, "system", "nginx_path");
+    if(nginx_path == nullptr) {
+        AppWarn("get nginx path failed");
+        return;
+    }
+    snprintf(cfg_file, sizeof(cfg_file), "%s/conf/servers/hls.conf", nginx_path.get());
+    GetNginxPort(cfg_file, nginx.http_port);
+    if(nginx.http_port == 0) {
+        nginx.http_port = 8090;
+        AppWarn("get nginx http port failed, use default %d", nginx.http_port);
+    }
+    GetNginxRoot(cfg_file, nginx.workdir);
+    if(strlen(nginx.workdir) == 0) {
+        strncpy(nginx.workdir, "/home/ubuntu/webdir/webpages", sizeof(nginx.workdir));
+        AppWarn("get nginx root path failed, use default %s", nginx.workdir);
+    }
 }
 
 void HangUp(void) {

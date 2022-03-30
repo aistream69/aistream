@@ -16,23 +16,6 @@
                     "val": "frame"
                 }
             ]
-        },
-        {
-            "name": "decode",
-            "path": "./lib/libjpegdec.so",
-            "async": "true",
-            "input_map": [
-                {
-                    "key": "input",
-                    "val": "frame"
-                }
-            ],
-            "output_map": [
-                {
-                    "key": "output",
-                    "val": "null"
-                }
-            ]
         }
     ]
 }

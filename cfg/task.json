@@ -9,8 +9,8 @@
       "config": "./samples/debug.json"
     },
     {
-      "name": "jpegdec",
-      "config": "./samples/jpegdec.json"
+      "name": "single",
+      "config": "./samples/single.json"
     },
     {
       "name": "face_capture",

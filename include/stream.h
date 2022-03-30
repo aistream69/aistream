@@ -34,7 +34,6 @@
 #include "share.h"
 #include "log.h"
 
-#define CONFIG_FILE     "cfg/config.json"
 #define SW_VERSION      "V0.01.2021112201"
 
 class MediaServer {

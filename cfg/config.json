@@ -7,15 +7,15 @@
         "enable": 1,
         "rest_port": 15515
     },
-    "obj": {
-        "rtsp": {
-            "queue_len": 50,
-            "framesize_max": 1024000,
-            "queue_len_max": 50
-        }
+    "video": {
+        "queue_len": 50,
+        "framesize_max": 1024000,
+        "rgb_queue_len": 10,
+        "rgb_skip": 5
     },
     "system": {
-        "localhost": "10.2.2.70",
-        "obj_max": 10000
+        "obj_max": 10000,
+        "localhost": "124.222.53.156",
+        "nginx_path": "/usr/local/nginx"
     }
 }

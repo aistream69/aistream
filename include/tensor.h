@@ -24,7 +24,7 @@
 #include <queue>
 #include <condition_variable>
 
-#define MAX_DIMS    8
+#define MAX_DIMS    4
 
 typedef void* IHandle;
 
@@ -67,19 +67,38 @@ typedef struct {
 } TTensor;
 
 typedef struct {
+    int type;
     int width;
     int height;
     int frame_id;
     //TTensor tensor;
 } HeadParams;
 
+typedef struct {
+    char* buf;
+    int size;
+    int width;
+    int height;
+    int frame_id;
+} FrameParam;
+
+typedef struct {
+    float left;
+    float top;
+    float width;
+    float height;
+    float score;
+    int classid;
+} DetectionResult;
+
+#if 0
 class Packet {
 public:
     Packet(void* buf, size_t size, HeadParams* params = nullptr) {
         _data.resize(size); 
         memcpy(_data.data(), buf, size);
         if(params != nullptr) {
-            _params.frame_id = params->frame_id;
+            _params = *params;
         }
     };
     ~Packet() {
@@ -88,6 +107,34 @@ public:
     std::vector<char> _data;
     HeadParams _params;
 };
+#else
+class Packet {
+public:
+    Packet(void* buf, size_t size, HeadParams* params = nullptr) {
+        _size = size;
+        _data = new char[size];
+        memcpy(_data, buf, size);
+        if(params != nullptr) {
+            _params = *params;
+        }
+    }
+    ~Packet() {
+        if(_data != nullptr) {
+            delete _data;
+        }
+    }
+
+    char* _data;
+    size_t _size;
+    HeadParams _params;
+};
+#endif
+
+typedef struct {
+    size_t input_num;
+    Packet* input[MAX_DIMS];
+    Packet* output;
+} TensorBuffer;
 
 class PacketQueue {
 public:
@@ -101,12 +148,14 @@ public:
 class ElementData {
 public:
     ElementData(void) {
-        queue_len = 10000;
+        queue_len = 100;
         sleep_usec = 0;
+        memset(input_name, 0, sizeof(input_name));
     }
     ~ElementData(void) {}
     // input: allocated by itself
     // every element can have many inputs, connected to other elements
+    char input_name[MAX_DIMS][256];
     std::vector<std::shared_ptr<PacketQueue>> input;
     // output: allocated by next users, mutex lock?
     // every element have only one output, but the same data can be send to many other elements
@@ -119,28 +168,14 @@ class TensorData {
 public:
     TensorData(void) {
         _out = nullptr;
+        memset(&tensor_buf, 0, sizeof(tensor_buf));
     }
     ~TensorData(void) {}
     // element support multi intput, but single output
     std::vector<std::shared_ptr<Packet>> _in;
     std::shared_ptr<Packet> _out;
+    TensorBuffer tensor_buf;
 };
-
-/*
-typedef struct {
-    char *buf;
-    int size;
-    int width;
-    int height;
-    int frame_id;
-} Buffer;
-
-class TensorData_ {
-    int batch_size;
-    Buffer *input_ptr;
-    Buffer *output_ptr;
-};
-*/
 
 typedef struct {
     char name[64];

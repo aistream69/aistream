@@ -68,13 +68,13 @@ class AlgTask {
 public:
     AlgTask(MediaServer* _media);
     ~AlgTask(void);
-    MediaServer* media;
     void SetName(const char* _name) {strncpy(name, _name, sizeof(name));}
     char* GetName(void) {return name;}
     void SetConfig(const char* cfg) {strncpy(config, cfg, sizeof(config));}
     void SetBatchSize(int val) {batch_size = val;}
     bool Put2ElementQue(auto ele);
     bool AssignToThreads(std::shared_ptr<TaskParams> task);
+    MediaServer* media;
 private:
     char name[128];
     char config[256];
