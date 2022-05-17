@@ -1,18 +1,6 @@
 {
   "tasks": [
     {
-      "name": "simple",
-      "config": "./samples/simple.json"
-    },
-    {
-      "name": "debug",
-      "config": "./samples/debug.json"
-    },
-    {
-      "name": "single",
-      "config": "./samples/single.json"
-    },
-    {
       "name": "face_capture",
       "config": "./samples/face_detection.json"
     }

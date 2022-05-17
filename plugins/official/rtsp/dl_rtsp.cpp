@@ -174,6 +174,7 @@ extern "C" int RtspStop(IHandle handle) {
             delete pkt;
         }
     }
+    lock.unlock();
     delete rtsp_params;
     return 0;
 }

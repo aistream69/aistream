@@ -121,6 +121,7 @@ bool Object::DelFromTaskQue(char *name) {
 }
 
 void Object::TraverseTaskQue(void) {
+    CheckWorkDir();
     task_mtx.lock();
     for(auto itr = task_vec.begin(); itr != task_vec.end(); ++itr) {
         auto task = (*itr);
@@ -130,7 +131,6 @@ void Object::TraverseTaskQue(void) {
         }
     }
     task_mtx.unlock();
-    CheckWorkDir();
 }
 
 void Object::CheckWorkDir(void) {

@@ -192,15 +192,13 @@ static void request_del_obj(struct evhttp_request* req, void* arg) {
   "data":{
     "task":"yolov3",
     "params":{
-        "preview":{"enable":0},
-        "rabbitmq":{"enable":1,"host":"10.0.0.10","port":5672}
+        "preview": "hls"/"http-flv"/"0",
+        "record": "mp4"/"h264"/"0"
     }
   }
 } 
 Note:
  -- "params" is private data, it isn't necessary, and doesn't has any standard
- -- Every element default enable is 1
- -- In pipeline config, rabbitmq element also has it's default params
  -- All params appeared in restful have dynamic attribute
 **********************************************************/
 static void request_start_task(struct evhttp_request* req, void* arg) {

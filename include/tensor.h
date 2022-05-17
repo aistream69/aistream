@@ -91,23 +91,6 @@ typedef struct {
     int classid;
 } DetectionResult;
 
-#if 0
-class Packet {
-public:
-    Packet(void* buf, size_t size, HeadParams* params = nullptr) {
-        _data.resize(size); 
-        memcpy(_data.data(), buf, size);
-        if(params != nullptr) {
-            _params = *params;
-        }
-    };
-    ~Packet() {
-    } 
-
-    std::vector<char> _data;
-    HeadParams _params;
-};
-#else
 class Packet {
 public:
     Packet(void* buf, size_t size, HeadParams* params = nullptr) {
@@ -128,7 +111,6 @@ public:
     size_t _size;
     HeadParams _params;
 };
-#endif
 
 typedef struct {
     size_t input_num;

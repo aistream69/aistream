@@ -19,10 +19,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "tensor.h"
-#include "config.h"
-#include "share.h"
-#include "log.h"
 extern "C" {
 #include <libavformat/avformat.h>
 #include <libavcodec/avcodec.h>
@@ -34,6 +30,11 @@ extern "C" {
 #include <libavutil/time.h>
 #include <libavutil/opt.h>
 }
+#include "tensor.h"
+#include "config.h"
+#include "share.h"
+#include "common.h"
+#include "log.h"
 
 typedef struct {
     int dec_init;
@@ -362,9 +363,7 @@ extern "C" int DecodeInit(ElementData* data, char* params) {
     if(g_init) {
         return 0;
     }
-    avcodec_register_all();
-    av_register_all();
-    av_log_set_level(AV_LOG_FATAL);
+    FFmpegInit();
     InitLookupTable();
     InitConvertTable();
     g_init = 1;
@@ -406,27 +405,6 @@ extern "C" int DecodeProcess(IHandle handle, TensorData* data) {
         auto _packet = new Packet(rgb->buf, rgb->size, &params);
         data->tensor_buf.output = _packet;
     }
-/*
-    static int cnt = 0;
-    int size = 5048000;
-    char* buf = (char *)malloc(size);
-    if(buf == NULL) {
-        AppError("malloc failed");
-        return -1;
-    }
-    memset(buf, ++cnt, size);
-    HeadParams params = {0};
-    // input
-    TensorBuffer& tensor_buf = data->tensor_buf;
-    for(size_t i = 0; i < tensor_buf.input_num; i++) {
-        auto pkt = tensor_buf.input[i];
-        params.frame_id = pkt->_params.frame_id;
-    }
-    // output
-    auto _packet = new Packet(buf, size, &params);
-    tensor_buf.output = _packet;
-    free(buf);
-*/
     return 0;
 }
 

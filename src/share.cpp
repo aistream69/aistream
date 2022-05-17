@@ -549,9 +549,9 @@ static int GetNginxRoot(char* nginx_config_path, char* workdir) {
 
 void NginxInit(NginxParams& nginx) {
     char cfg_file[512];
-    memset(&nginx, 0, sizeof(nginx));
     auto nginx_path = GetStrValFromFile(CONFIG_FILE, "system", "nginx_path");
     if(nginx_path == nullptr) {
+        nginx.http_port = -1;
         AppWarn("get nginx path failed");
         return;
     }

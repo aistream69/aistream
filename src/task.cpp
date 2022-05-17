@@ -56,7 +56,7 @@ int TaskParams::Start(void) {
         auto tt = thread_vec[i];
         tt->Start(shared_from_this());
     }
-    AppDebug("start task ok, id:%d,alg:%s,threads:%ld", _obj->GetId(), name, thread_vec.size());
+    AppDebug("start task ok, id:%d,alg:%s", _obj->GetId(), name);
 
     return 0;
 }
