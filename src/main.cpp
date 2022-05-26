@@ -22,7 +22,15 @@
 #include <sys/stat.h>
 #include "stream.h"
 
-static void MainProcess(void) {
+static void MainProcess(int debug = 0) {
+    if(debug) {
+        AppDebug("start main process, pid:%d", getpid());
+        MediaServer *media = new MediaServer();
+        media->Run();
+        AppDebug("run ok");
+        exit(0);
+    }
+
     pid_t pid;
     pid = fork();
     if(pid == -1) {

@@ -6,6 +6,7 @@ include_directories(
     )
 link_directories(
     "${PROJECT_ROOT_PATH}/work/3rdparty/ffmpeg/release/lib"
+    "${PROJECT_ROOT_PATH}/work/3rdparty/x264/release/lib"
     )
 
 add_compile_options(-fPIC)
@@ -21,6 +22,7 @@ target_link_libraries(common
     -lavfilter 
     -lavcodec 
     -lavutil 
+    -Wl,-rpath,lib
     )
 
 set(LIBRARY_OUTPUT_PATH ${PROJECT_ROOT_PATH}/plugins/lib)

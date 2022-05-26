@@ -12,7 +12,7 @@ if(NOT EXISTS ${FFMPEG_SRC_DIR})
     execute_process(COMMAND tar xf ${FFMPEG_PKG_DIR}/ffmpeg-3.4.9.tar.xz -C ${FFMPEG_DIR})
 endif()
 
-set(CONFIGURE_CMD cd ${FFMPEG_SRC_DIR} && ./configure --enable-shared --prefix=${FFMPEG_DIR}/release)
+set(CONFIGURE_CMD cd ${FFMPEG_SRC_DIR} && ./configure --enable-shared --enable-gpl --enable-libx264 --extra-cflags=-I${WORK_DIR}/3rdparty/x264/release/include --extra-ldflags=-L${WORK_DIR}/3rdparty/x264/release/lib --prefix=${FFMPEG_DIR}/release)
 set(BUILD_CMD cd ${FFMPEG_SRC_DIR} && make -j4)
 set(INSTALL_CMD cd ${FFMPEG_SRC_DIR} && make install)
 

@@ -31,5 +31,6 @@ target_link_libraries(tracker
     -lopencv_imgproc
     -lopencv_imgcodecs
     -lopencv_dnn
+    -Wl,-rpath,lib
     )
 

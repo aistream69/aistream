@@ -71,6 +71,8 @@ typedef struct {
     int width;
     int height;
     int frame_id;
+    char* ptr;
+    size_t ptr_size;
     //TTensor tensor;
 } HeadParams;
 
@@ -95,8 +97,13 @@ class Packet {
 public:
     Packet(void* buf, size_t size, HeadParams* params = nullptr) {
         _size = size;
-        _data = new char[size];
-        memcpy(_data, buf, size);
+        if(size > 0) {
+            _data = new char[size];
+            memcpy(_data, buf, size);
+        }
+        else {
+            _data = nullptr;
+        }
         if(params != nullptr) {
             _params = *params;
         }
@@ -104,6 +111,11 @@ public:
     ~Packet() {
         if(_data != nullptr) {
             delete _data;
+            _data = nullptr;
+        }
+        if(_params.ptr != nullptr) {
+            delete _params.ptr;
+            _params.ptr = nullptr;
         }
     }
 

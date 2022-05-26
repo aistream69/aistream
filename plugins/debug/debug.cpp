@@ -17,14 +17,56 @@
 #include <stdlib.h>
 #include <string.h>
 #include "tensor.h"
+#include "share.h"
 #include "log.h"
 
+#define VIDEO_W 1280
+#define VIDEO_H 720
+
 typedef struct {
+    FILE *fp;
+    char* yuv_buf;
+    int yuv_size;
 } DebugParams;
 
+static void CopyToPacket(DebugParams* debug, TensorData* data) {
+    int num = 3;
+    size_t size= sizeof(DetectionResult)*num;
+    char* ptr = new char[size];
+    DetectionResult* dets = (DetectionResult* )ptr;
+
+    static int offset = 50;
+    for(int i = 0; i < num; i ++) {
+        DetectionResult* det = dets + i;
+        det->left = i*10 + offset;
+        det->top = i*50 + 10 + offset;
+        if(det->top > VIDEO_H) {
+            offset = 0;
+        }
+        det->width = 20 + i*20;
+        det->height = 30 + i*30;
+        det->score = 0.99;
+        det->classid = 1;
+    }
+    //offset += 2;
+
+    HeadParams params = {0};
+    auto pkt = data->tensor_buf.input[0];
+    params.ptr = ptr;
+    params.ptr_size = size;
+    params.frame_id = pkt->_params.frame_id;
+    params.width = VIDEO_W;
+    params.height = VIDEO_H;
+    auto _packet = new Packet(debug->yuv_buf, debug->yuv_size, &params);
+    data->tensor_buf.output = _packet;
+}
+
 extern "C" int DebugInit(ElementData* data, char* params) {
-    strncpy(data->input_name[0], "debug_input_frame", sizeof(data->input_name[0]));
-    //data->sleep_usec = 40000;
+    strncpy(data->input_name[0], "debug_input", sizeof(data->input_name[0]));
+    data->queue_len = GetIntValFromFile(CONFIG_FILE, "video", "rgb_queue_len");
+    if(data->queue_len < 0) {
+        data->queue_len = 10;
+    }
     return 0;
 }
 
@@ -32,33 +74,43 @@ extern "C" IHandle DebugStart(int channel, char* params) {
     if(params != NULL) {
         AppDebug("params:%s", params);
     }
-    return (IHandle)1;
+    const char* filename = "./data/video/test.yuv";
+    FILE *fp = fopen(filename, "rb");
+    if(fp == NULL) {
+        AppError("fopen %s failed", filename);
+        return NULL;
+    }
+    DebugParams* debug = new DebugParams();
+    debug->fp = fp;
+    debug->yuv_size = VIDEO_W*VIDEO_H*3/2;
+    debug->yuv_buf = (char* )malloc(debug->yuv_size);
+    return debug;
 }
 
 extern "C" int DebugProcess(IHandle handle, TensorData* data) {
-    static int cnt = 0;
-    int size = 20480000;
-    char* buf = (char *)malloc(size);
-    if(buf == NULL) {
-        AppError("malloc failed");
-        return -1;
+    DebugParams* debug = (DebugParams* )handle;
+    int n = fread(debug->yuv_buf, 1, debug->yuv_size, debug->fp);
+    if(n != debug->yuv_size) {
+        AppDebug("read end, loop ...");
+        fseek(debug->fp, 0L, SEEK_SET);
+        int n = fread(debug->yuv_buf, 1, debug->yuv_size, debug->fp);
+        if(n != debug->yuv_size) {
+            AppDebug("loop read failed");
+            sleep(3600);
+        }
     }
-    memset(buf, ++cnt, size);
-    HeadParams params = {0};
-    // input
-    TensorBuffer& tensor_buf = data->tensor_buf;
-    for(size_t i = 0; i < tensor_buf.input_num; i++) {
-        auto pkt = tensor_buf.input[i];
-        params.frame_id = pkt->_params.frame_id;
-    }
-    // output
-    auto _packet = new Packet(buf, size, &params);
-    tensor_buf.output = _packet;
-    free(buf);
+    CopyToPacket(debug, data);
+
     return 0;
 }
 
 extern "C" int DebugStop(IHandle handle) {
+    DebugParams* debug = (DebugParams* )handle;
+    if(debug != NULL) {
+        fclose(debug->fp);
+        free(debug->yuv_buf);
+        delete debug;
+    }
     return 0;
 }
 

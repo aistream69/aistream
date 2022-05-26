@@ -298,7 +298,7 @@ static int CreatePreview(PreviewParams* preview) {
     }
 
     if(!strncmp(preview->type, "hls", sizeof(preview->type))) {
-        avformat_alloc_output_context2(&(preview->ofmt_ctx_v), NULL, preview->type, out_filename_v);
+        avformat_alloc_output_context2(&(preview->ofmt_ctx_v), NULL, "hls", out_filename_v);
         if (!(preview->ofmt_ctx_v)) {
             AppError("id:%d, Could not create output context", preview->id);
             return -1;
@@ -494,7 +494,7 @@ extern "C" IHandle PreviewStart(int channel, char* params) {
     }
     if(!strncmp(preview->type, "hls", sizeof(preview->type)) || 
             !strncmp(preview->type, "http-flv", sizeof(preview->type))) {
-        AppDebug("preview type : %s", preview->type);
+        AppDebug("id:%d, preview type:%s", channel, preview->type);
     }
     else {
         AppWarn("unsupport type : %s", preview->type);
@@ -526,7 +526,7 @@ extern "C" int PreviewProcess(IHandle handle, TensorData* data) {
     auto pkt = tensor_buf.input[0];
     std::unique_lock<std::mutex> lock(preview->mtx);
     if(preview->_queue.size() < (size_t)config.queue_len) {
-        HeadParams params;
+        HeadParams params = {0};
         params.frame_id = pkt->_params.frame_id;
         auto _packet = std::make_shared<Packet>(pkt->_data, pkt->_size, &params);
         preview->_queue.push(_packet);

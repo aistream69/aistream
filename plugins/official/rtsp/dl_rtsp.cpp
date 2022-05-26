@@ -64,7 +64,7 @@ static void RtspDaemon(RtspParams* rtsp_params) {
 }
 
 static int RtspCallback(unsigned char *buf, int size, void *arg) {
-    HeadParams params;
+    HeadParams params = {0};
     RtspParams* rtsp_params = (RtspParams* )arg;
 
     //printf("rtsp,id:%d,frameid:%d,size:%d,%02x:%02x:%02x:%02x:%02x\n", 

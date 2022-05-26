@@ -21,5 +21,6 @@ target_link_libraries(detection
     -lopencv_imgproc
     -lopencv_imgcodecs
     -lopencv_dnn
+    -Wl,-rpath,lib
     )
 

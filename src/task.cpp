@@ -331,7 +331,8 @@ void TaskThread::ThreadFunc(void) {
             for(size_t j = 0; j < ele->data.output.size() && tensor._out != nullptr; j ++) {
                 auto output = ele->data.output[j];
                 if(output == nullptr) {
-                    AppWarn("id:%d,%s,%ld,shared_ptr exception", obj->GetId(), ele->GetName(), j);
+                    AppWarn("id:%d,%s,%ld,shared_ptr exception", 
+                                obj->GetId(), ele->GetName(), j);
                     continue;
                 }
                 std::unique_lock<std::mutex> lock(output->mtx);
@@ -340,7 +341,7 @@ void TaskThread::ThreadFunc(void) {
                 }
                 else {
                     printf("warning, id:%d, %s, put to queue failed, %s, quelen:%ld\n", 
-                            obj->GetId(), ele->GetName(), output->name, output->_queue.size());
+                        obj->GetId(), ele->GetName(), output->name, output->_queue.size());
                 }
                 output->condition.notify_one();
             }
@@ -358,6 +359,10 @@ void TaskThread::ThreadFunc(void) {
             auto output = ele->data.output[j];
             std::unique_lock<std::mutex> lock(output->mtx);
             while(!output->_queue.empty()) output->_queue.pop();
+            /* when stoping task by restful api, in order to return quickly, 
+             * sync is false, and tt->stop will not be invoked,
+             * so it should notify next module here */
+            output->condition.notify_all();
         }
         ele->Stop();
     }

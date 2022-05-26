@@ -20,11 +20,13 @@ add_compile_options(-fPIC)
 add_library(rtsp SHARED rtsp/dl_rtsp.cpp)
 add_library(cpudecode SHARED decode/decode_cpu.cpp)
 add_library(preview SHARED preview/preview.cpp)
+add_library(osd SHARED osd/osd.cpp)
 add_library(rabbitmqq SHARED output/rabbitmq.cpp)
 
 add_dependencies(rtsp rtsplib)
 add_dependencies(cpudecode common)
 add_dependencies(preview common)
+add_dependencies(osd common)
 add_dependencies(rabbitmqq rabbitmq)
 
 target_link_libraries(rtsp
@@ -33,14 +35,22 @@ target_link_libraries(rtsp
     -lgroupsock
     -lBasicUsageEnvironment
     -lUsageEnvironment
+    -Wl,-rpath,lib
     )
 target_link_libraries(cpudecode
     -lcommon
+    -Wl,-rpath,lib
     )
 target_link_libraries(preview
     -lcommon
+    -Wl,-rpath,lib
+    )
+target_link_libraries(osd
+    -lcommon
+    -Wl,-rpath,lib
     )
 target_link_libraries(rabbitmqq
     -lrabbitmq
+    -Wl,-rpath,lib
     )
 

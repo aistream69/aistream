@@ -3,6 +3,10 @@
     {
       "name": "face_capture",
       "config": "./samples/face_detection.json"
+    },
+    {
+      "name": "debug",
+      "config": "./samples/debug.json"
     }
   ]
 }

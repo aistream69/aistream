@@ -18,131 +18,41 @@
             ]
         },
         {
-            "name": "decode",
-            "path": "./lib/libdec.so",
+            "name": "debug",
+            "path": "./plugins/debug/libdebug.so",
             "input_map": [
                 {
-                    "key": "input",
+                    "key": "debug_input",
                     "val": "frame"
                 }
             ],
             "output_map": [
                 {
-                    "key": "output",
-                    "val": "yuv"
+                    "key": "debug_output",
+                    "val": "meta_yuv"
                 }
             ]
         },
         {
-            "name": "yuv2rgb",
-            "path": "./lib/libyuv2rgb.so",
+            "name": "osd",
+            "path": "./plugins/official/libosd.so",
             "input_map": [
                 {
-                    "key": "input",
-                    "val": "yuv"
+                    "key": "osd_input",
+                    "val": "meta_yuv"
                 }
             ],
             "output_map": [
                 {
-                    "key": "output",
-                    "val": "rgb"
+                    "key": "osd_output",
+                    "val": "osd_264"
                 }
             ],
             "params": {
-                "layout": "NHWC",
-                "format": "BGR",
-                "resize": [416,416],
-                "normalation": "common"
-            }
-        },
-        {
-            "name": "preprocess",
-            "path": "./lib/libpreprocess.so",
-            "input_map": [
-                {
-                    "key": "input",
-                    "val": "rgb"
-                }
-            ],
-            "output_map": [
-                {
-                    "key": "output",
-                    "val": "preprocess_result"
-                }
-            ]
-        },
-        {
-            "name": "yolov3",
-            "path": "./lib/tvm_yolov3.so",
-            "framework": "tvm",
-            "input_map": [
-                {
-                    "key": "input",
-                    "val": "preprocess_result"
-                }
-            ],
-            "output_map": [
-                {
-                    "key": "output",
-                    "val": "yololayer3"
-                }
-            ]
-        },
-        {
-            "name": "postprocess",
-            "path": "./lib/libpostprocess.so",
-            "input_map": [
-                {
-                    "key": "input",
-                    "val": "yololayer3"
-                }
-            ],
-            "output_map": [
-                {
-                    "key": "output",
-                    "val": "postprocess_result"
-                }
-            ]
-        },
-        {
-            "name": "tracker",
-            "path": "./lib/libtracker.so",
-            "async": "true",
-            "input_map": [
-                {
-                    "key": "input",
-                    "val": "postprocess_result"
-                }
-            ],
-            "output_map": [
-                {
-                    "key": "output",
-                    "val": "tracker_result"
-                }
-            ]
-        },
-        {
-            "name": "rabbitmq",
-            "path": "./lib/librabbitmq.so",
-            "input_map": [
-                {
-                    "key": "input",
-                    "val": "tracker_result"
-                }
-            ],
-            "output_map": [
-                {
-                    "key": "output",
-                    "val": "null"
-                }
-            ],
-            "params": {
-                "host": "10.0.0.10",
-                "port": 5672,
-                "username": "guest",
-                "password": "guest",
-                "exchange": "amq.direct",
-                "routingkey": ""
+              "color": [255, 0, 0],
+              "thickness": 1,
+              "bitrate": 2000000,
+              "gop": 100
             }
         },
         {
@@ -150,36 +60,13 @@
             "path": "./plugins/official/libpreview.so",
             "input_map": [
                 {
-                    "key": "input",
-                    "val": "frame"
+                    "key": "preview_input",
+                    "val": "osd_264"
                 }
             ],
             "output_map": [
                 {
-                    "key": "output",
-                    "val": "null"
-                }
-            ],
-            "params": {
-                "type": "hls"
-            }
-        },
-        {
-            "name": "display",
-            "path": "./lib/libdisplay.so",
-            "input_map": [
-                {
-                    "key": "input1",
-                    "val": "rgb"
-                },
-                {
-                    "key": "input2",
-                    "val": "tracker_result"
-                }
-            ],
-            "output_map": [
-                {
-                    "key": "output",
+                    "key": "preview_output",
                     "val": "null"
                 }
             ]
