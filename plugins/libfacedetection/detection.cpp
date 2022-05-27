@@ -43,7 +43,7 @@ typedef struct {
     int top_k;
 } FaceEngine;
 
-static FaceEngine *engine = NULL;
+static FaceEngine* engine = NULL;
 static cv::Mat postProcess(const std::vector<cv::Mat>& output_blobs, DetectionParams* detection) {
     auto priors = detection->priors;
     int inputW = detection->input_w;

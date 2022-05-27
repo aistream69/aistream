@@ -2,6 +2,15 @@
     "rtsp": {
         "lib": "plugins/official/librtsp.so"
     },
+    "rtmp": {
+        "lib": "todo"
+    }
+    "gb28181": {
+        "lib": "todo"
+    }
+    "gat1400": {
+        "lib": "todo"
+    }
     "text": {
         "lib": "plugins/official/libtext.so"
     }
