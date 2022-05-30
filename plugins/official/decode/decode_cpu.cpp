@@ -384,6 +384,7 @@ extern "C" IHandle DecodeStart(int channel, char* params) {
     if(dec_params->skip < 0) {
         dec_params->skip = 1;
     }
+    AppDebug("rgb skip : %d", dec_params->skip);
     return dec_params;
 }
 

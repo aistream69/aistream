@@ -220,8 +220,8 @@ static int ReadVideoPacket(void *opaque, uint8_t *buf, int size){
                 len += pkt->_size;
             }
             else {
-                printf("read video packet exception, id:%d,size:%ld,len:%d\n", 
-                        preview->id, pkt->_size, len);
+                printf("read video packet exception, id:%d,size:%d,len:%d,pkt:%ld\n", 
+                        preview->id, size, len, pkt->_size);
                 break;
             }
             preview->frame_id = pkt->_params.frame_id;

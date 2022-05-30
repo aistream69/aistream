@@ -285,6 +285,8 @@ extern "C" int DetectionProcess(IHandle handle, TensorData* data) {
     std::vector<cv::String> output_names = { "loc", "conf", "iou" };
     DetectionParams* detection = (DetectionParams* )handle;
 
+    //struct timeval tv1, tv2;
+    //gettimeofday(&tv1, NULL);
     if(!detection->init) {
         detection->input_w = w;
         detection->input_h = h;
@@ -317,6 +319,8 @@ extern "C" int DetectionProcess(IHandle handle, TensorData* data) {
         auto _packet = new Packet(output.get(), sizeof(DetectionResult)*n, &params);
         data->tensor_buf.output = _packet;
     }
+    //gettimeofday(&tv2, NULL);
+    //AppDebug("frameid:%d, cost:%fms", pkt->_params.frame_id, (tv2.tv_sec - tv1.tv_sec)*1000.0 + (tv2.tv_usec - tv1.tv_usec)/1000.0);
     return 0;
 }
 

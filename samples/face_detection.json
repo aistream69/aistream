@@ -62,6 +62,7 @@
             "path": "./plugins/tracker/libtracker.so",
             "input_map": [
                 {
+                    "//Note": "for multi inputs, the slower must connect to input[0]",
                     "key": "tracker_input1",
                     "val": "obj"
                 },

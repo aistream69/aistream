@@ -199,7 +199,7 @@ extern "C" int MqProcess(IHandle handle, TensorData* data) {
     pthread_mutex_lock(&mq.mtx);
     MqSend(mq, json);
     pthread_mutex_unlock(&mq.mtx);
-    //printf("##test, mq, %s\n", json);
+    //printf("##debug, mq, %s\n", json);
     return 0;
 }
 

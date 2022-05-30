@@ -232,75 +232,44 @@ TaskThread::~TaskThread(void) {
 }
 
 static int GetInput(TensorData& tensor, auto ele, auto obj) {
-    int ret = 0;
-    int frame_id = 0;
-    for(size_t j = 0; j < ele->data.input.size(); j++) {
-        auto input = ele->data.input[j];
-        if(input == nullptr) {
-            AppWarn("id:%d,%s,%ld,shared_ptr exception", obj->GetId(), ele->GetName(), j);
-            ret = -2;
-            sleep(1);
-            break;
-        }
-        std::unique_lock<std::mutex> lock(input->mtx);
-        //printf("##test,%s:%d, id:%d,%s,input %ld,\n", __FILE__, __LINE__, obj->GetId(), ele->GetName(), j);
-        input->condition.wait(lock, [input] {
-                return !input->_queue.empty() || !(*input->running);
-            });
-        //printf("##test,%s:%d, id:%d,%s,input %ld,\n", __FILE__, __LINE__, obj->GetId(), ele->GetName(), j);
-        if(!(*input->running)) {
-            ret = -1;
-            break;
-        }
-        auto pkt = input->_queue.front();
-        input->_queue.pop();
-        tensor._in.push_back(pkt);
-        //printf("##test, id:%d, %s, input %ld, frameid:%d, size:%ld\n", 
-        //    obj->GetId(), ele->GetName(), j, pkt->_params.frame_id, pkt->_data.size());
-        if(frame_id > 0 && frame_id != pkt->_params.frame_id) {
-            AppWarn("%s, %ld, exception frameid %d!=%d", 
-                    ele->GetName(), j, pkt->_params.frame_id, frame_id);
-            ret = frame_id > pkt->_params.frame_id ? frame_id + 1 : pkt->_params.frame_id + 1;
-        }
-        frame_id = pkt->_params.frame_id;
+    if(ele->data.input.size() == 0) {
+        return 0;
     }
-    return ret;
-}
+    // pop highest priority input
+    auto input = ele->data.input[0];
+    std::unique_lock<std::mutex> lock(input->mtx);
+    input->condition.wait(lock, [input] {
+            return !input->_queue.empty() || !(*input->running);
+        });
+    if(!(*input->running)) {
+        return -1;
+    }
+    auto pkt = input->_queue.front();
+    input->_queue.pop();
+    lock.unlock();
+    tensor._in.push_back(pkt);
 
-static int ResetInput(int frame_id, auto ele, auto obj) {
-    size_t n;
-    int ret = 0;
-    int try_time = 3;
-    do {
-        n = 0;
-        for(size_t j = 0; j < ele->data.input.size(); j++) {
-            auto input = ele->data.input[j];
-            if(input == nullptr) {
-                AppWarn("id:%d,%s,%ld,shared_ptr exception", obj->GetId(), ele->GetName(), j);
-                try_time = 0;
-                sleep(1);
-                break;
-            }
-            std::unique_lock<std::mutex> lock(input->mtx);
-            input->condition.wait(lock, [input] {
-                    return !input->_queue.empty() || !(*input->running);
-                });
-            if(!(*input->running)) {
-                try_time = 0;
-                ret = -1;
-                break;
-            }
+    // search and match other inputs
+    int frame_id = pkt->_params.frame_id;
+    for(size_t i = 1; i < ele->data.input.size(); i++) {
+        auto input = ele->data.input[i];
+        std::unique_lock<std::mutex> lock(input->mtx);
+        while(!input->_queue.empty()) {
             auto pkt = input->_queue.front();
-            if(pkt->_params.frame_id < frame_id) {
-                input->_queue.pop();
-                AppDebug("pop input %ld, frame_id:%d", j, pkt->_params.frame_id);
-            }
-            else if(pkt->_params.frame_id == frame_id) {
-                n ++;
+            input->_queue.pop();
+            if(pkt->_params.frame_id >= frame_id) {
+                tensor._in.push_back(pkt);
+                break;
             }
         }
-    } while(n != ele->data.input.size() && try_time--);
-    return ret;
+        if(tensor._in.size() != i + 1) {
+            AppWarn("id:%d, %s, i:%ld, match frameid %d failed, "
+                    "please check if the slower input connect to input[0]", 
+                    obj->GetId(), ele->GetName(), i, frame_id);
+            return 1;
+        }
+    }
+    return 0;
 }
 
 void TaskThread::ThreadFunc(void) {
@@ -314,13 +283,7 @@ void TaskThread::ThreadFunc(void) {
             auto ele = t_ele_vec[i];
             int ret = GetInput(tensor, ele, obj);
             if(ret != 0) {
-                if(ret == -1) {
-                    break;
-                }
-                else if(ret == -2) {
-                    continue;
-                }
-                else if(ResetInput(ret, ele, obj) == -1) {
+                if(ret < 0) {
                     break;
                 }
                 continue;
@@ -336,13 +299,10 @@ void TaskThread::ThreadFunc(void) {
                     continue;
                 }
                 std::unique_lock<std::mutex> lock(output->mtx);
-                if(output->_queue.size() < (size_t)ele->data.queue_len) {
-                    output->_queue.push(tensor._out);
+                if(output->_queue.size() >= (size_t)ele->data.queue_len) {
+                    output->_queue.pop();
                 }
-                else {
-                    printf("warning, id:%d, %s, put to queue failed, %s, quelen:%ld\n", 
-                        obj->GetId(), ele->GetName(), output->name, output->_queue.size());
-                }
+                output->_queue.push(tensor._out);
                 output->condition.notify_one();
             }
             if(ele->data.sleep_usec) {

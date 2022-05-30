@@ -88,5 +88,8 @@
     /usr/local/nginx/sbin/nginx
 #### 配置
     修改aistream工程下cfg/config.json中nginx_path，与nginx安装目录一致，如"/usr/local/nginx"
+### 2. 备注
+#### 多输入
+    如果模块有多个input，则input[0]需要连接到较慢的那个，参考samples/face_detection.json，tracker_input1必须连接到obj(目标检测，输入为rgb，且检测结果可能为0)，而不是rgb(每帧都有有效数据).
     
 
