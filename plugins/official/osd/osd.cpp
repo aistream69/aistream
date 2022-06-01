@@ -185,7 +185,9 @@ static int CreateEncoder(auto pkt, OSDParams* osd) {
     encoder.ctx->pix_fmt = AV_PIX_FMT_NV12;
 
     if(encoder.codec->id == AV_CODEC_ID_H264) {
-        av_opt_set(encoder.ctx->priv_data, "preset", "slow", 0);
+        // ultrafast, superfast, veryfast, faster, fast, medium, slow, slower, veryslow
+        av_opt_set(encoder.ctx->priv_data, "preset", "superfast", 0);
+        av_opt_set(encoder.ctx->priv_data, "tune", "zerolatency", 0);
     }
     /* open it */
     if(avcodec_open2(encoder.ctx, encoder.codec, NULL) < 0) {
@@ -255,6 +257,7 @@ static int Encoding(auto pkt, OSDParams* osd, TensorData* data) {
     while(ret >= 0) {
         ret = avcodec_receive_packet(encoder.ctx, avpkt);
         if(!ret) {
+            //printf("##debug, recv %d:%ld\n", pkt->_params.frame_id, avpkt->pts);
             HeadParams params = {0};
             params.frame_id = pkt->_params.frame_id;
             auto _packet = new Packet(avpkt->data, avpkt->size, &params);

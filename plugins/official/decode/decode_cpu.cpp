@@ -228,6 +228,8 @@ static int InitFFmpeg(FFmpegParam *ffmpeg) {
     }
     if(codec->capabilities & AV_CODEC_CAP_TRUNCATED)
         ffmpeg->decContex->flags |= AV_CODEC_FLAG_TRUNCATED; // we do not send complete frames
+    //av_opt_set(ffmpeg->decContex->priv_data, "pix_fmt", AV_PIX_FMT_NV12, 0);
+    //ffmpeg->decContex->sw_pix_fmt = AV_PIX_FMT_NV12;
     /* open it */
     ret = avcodec_open2(ffmpeg->decContex, codec, NULL);
     if(ret < 0) {
@@ -412,7 +414,7 @@ extern "C" int DecodeProcess(IHandle handle, TensorData* data) {
 extern "C" int DecodeStop(IHandle handle) {
     DecodeParams* dec_params = (DecodeParams* )handle;
     if(dec_params == NULL) {
-        AppWarn("dec is null");
+        AppWarn("id:%d, dec is null", dec_params->id);
         return -1;
     }
     FrameParam* rgb = &dec_params->rgb;

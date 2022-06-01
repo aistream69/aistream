@@ -201,7 +201,7 @@ static int ReadVideoPacket(void *opaque, uint8_t *buf, int size){
     PreviewParams *preview = (PreviewParams *)opaque;
     do {
         if(preview->_queue.size() == 0) {
-            usleep(40000);
+            usleep(20000);
             continue;
         }
         std::unique_lock<std::mutex> lock(preview->mtx);
@@ -211,18 +211,20 @@ static int ReadVideoPacket(void *opaque, uint8_t *buf, int size){
         if(!preview->find_idr){
             if((pkt->_data[4] & 0x1f) != 1) {
                 preview->find_idr = 1;
-                AppDebug("id:%d, find IDR ok", preview->id);
+                AppDebug("id:%d, size:%d, find IDR ok", preview->id, size);
             }
         }
         if(preview->find_idr) {
-            if(len + (int)pkt->_size < size) {
-                memcpy(buf + len, pkt->_data, pkt->_size);
+            if((int)pkt->_size < size) {
+                memcpy(buf, pkt->_data, pkt->_size);
                 len += pkt->_size;
             }
             else {
                 printf("read video packet exception, id:%d,size:%d,len:%d,pkt:%ld\n", 
                         preview->id, size, len, pkt->_size);
-                break;
+                memcpy(buf, pkt->_data, size);
+                len += size;
+                //break;
             }
             preview->frame_id = pkt->_params.frame_id;
         }
@@ -235,7 +237,7 @@ static int CreatePreview(PreviewParams* preview) {
     unsigned char *aviobuffer;
     const char *out_filename_v;
     char path[URL_LEN*2], errstr[256];
-    int aviobuf_size = config.framesize_max*2;
+    int aviobuf_size = config.framesize_max;
 
     preview->frame_id = -1;
     preview->stream_index = -1;
@@ -285,6 +287,7 @@ static int CreatePreview(PreviewParams* preview) {
         AppError("id:%d, avio_alloc_context %d failed", preview->id, aviobuf_size);
         return -1;
     }
+    preview->avio->max_packet_size = aviobuf_size;
     preview->ifmt_ctx->pb = preview->avio;
 
     if ((ret = avformat_open_input(&(preview->ifmt_ctx), NULL, NULL, NULL)) < 0) {

@@ -327,7 +327,7 @@ extern "C" int DetectionProcess(IHandle handle, TensorData* data) {
 extern "C" int DetectionStop(IHandle handle) {
     DetectionParams* detection = (DetectionParams* )handle;
     if(detection == NULL) {
-        AppWarn("detection is null");
+        AppWarn("id:%d, detection is null", detection->id);
         return -1;
     }
     detection->priors.clear();
