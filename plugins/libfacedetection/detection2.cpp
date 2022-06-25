@@ -22,6 +22,7 @@
 #include <opencv2/highgui.hpp>
 #include <opencv2/objdetect.hpp>
 #include "share.h"
+#include "common.h"
 #include "tensor.h"
 #include "log.h"
 
@@ -32,6 +33,7 @@ typedef struct {
     bool init;
     int input_w;
     int input_h;
+    unsigned char* rgb_buf;
     std::vector<cv::Rect2f> priors;
 } DetectionParams;
 
@@ -266,12 +268,13 @@ extern "C" int DetectionInit(ElementData* data, char* params) {
     engine->score_threshold = score_threshold;
     engine->nms_threshold = nms_threshold;
     engine->top_k = top_k;
+    RGBInit();
 
     return 0;
 }
 
 extern "C" IHandle DetectionStart(int channel, char* params) {
-    DetectionParams* detection = (DetectionParams* )calloc(1, sizeof(DetectionParams));
+    DetectionParams* detection = new DetectionParams();
     detection->id = channel;
     return detection;
 }
@@ -280,48 +283,66 @@ extern "C" int DetectionProcess(IHandle handle, TensorData* data) {
     auto pkt = data->tensor_buf.input[0];
     int w = pkt->_params.width;
     int h = pkt->_params.height;
-    char *buf = pkt->_data;
     std::vector<cv::Mat> output_blobs;
     std::vector<cv::String> output_names = { "loc", "conf", "iou" };
     DetectionParams* detection = (DetectionParams* )handle;
 
-    //struct timeval tv1, tv2;
-    //gettimeofday(&tv1, NULL);
     if(!detection->init) {
         detection->input_w = w;
         detection->input_h = h;
+        detection->rgb_buf = (unsigned char* )malloc(w*h*3);
         detection->init = true;
         GeneratePriors(detection);
     }
 
-    // PreProcess
-    Mat img = Mat(h, w, CV_8UC3, buf);
-    Mat input_blob = cv::dnn::blobFromImage(img);
-    // Forward
-    engine->mtx.lock();
-    engine->net.setInput(input_blob);
-    engine->net.forward(output_blobs, output_names);
-    engine->mtx.unlock();
-    // Post process
-    cv::Mat faces;
-    cv::Mat results = postProcess(output_blobs, detection);
-    results.convertTo(faces, CV_32FC1);
-    // Copy to out
-    if(faces.rows == 0) {
-        return 0;
+    HeadParams params = {0};
+    // debug version for osd
+    int skip = 50;
+    if(pkt->_params.frame_id % skip == 0) {
+        // PreProcess
+        unsigned char* y = (unsigned char*)pkt->_params.ptr;
+        unsigned char* u = y + w*h;
+        unsigned char* v = u + w*h/4;
+        ConvertYUV2RGB(y, u, v, detection->rgb_buf, w, h, pkt->_params.type);
+        Mat img = Mat(h, w, CV_8UC3, detection->rgb_buf);
+        Mat input_blob = cv::dnn::blobFromImage(img);
+        // Forward
+        engine->mtx.lock();
+        engine->net.setInput(input_blob);
+        engine->net.forward(output_blobs, output_names);
+        engine->mtx.unlock();
+        // Post process
+        cv::Mat faces;
+        cv::Mat results = postProcess(output_blobs, detection);
+        results.convertTo(faces, CV_32FC1);
+        // Copy to out
+        auto output = std::make_unique<char[]>(sizeof(DetectionResult)*faces.rows);
+        int n = get_detections(faces, w, h, output);
+        size_t size= sizeof(DetectionResult)*n;
+        if(size > 0) {
+            char* ptr = new char[size];
+            DetectionResult* dets = (DetectionResult* )ptr;
+            DetectionResult* result = (DetectionResult* )output.get();
+            for(int i = 0; i < n; i ++) {
+                DetectionResult* det = dets + i;
+                det->left = result[i].left;
+                det->top = result[i].top;
+                det->width = result[i].width;
+                det->height = result[i].height;
+                det->score = result[i].score;
+                det->classid = result[i].classid;
+            }
+            params.ptr = ptr;
+            params.ptr_size = size;
+        }
     }
-    auto output = std::make_unique<char[]>(sizeof(DetectionResult)*faces.rows);
-    int n = get_detections(faces, w, h, output);
-    if(n > 0) {
-        HeadParams params = {0};
-        params.frame_id = pkt->_params.frame_id;
-        params.width = pkt->_params.width;
-        params.height = pkt->_params.height;
-        auto _packet = new Packet(output.get(), sizeof(DetectionResult)*n, &params);
-        data->tensor_buf.output = _packet;
-    }
-    //gettimeofday(&tv2, NULL);
-    //AppDebug("frameid:%d, cost:%fms", pkt->_params.frame_id, (tv2.tv_sec - tv1.tv_sec)*1000.0 + (tv2.tv_usec - tv1.tv_usec)/1000.0);
+    params.type = pkt->_params.type;
+    params.frame_id = pkt->_params.frame_id;
+    params.width = w;
+    params.height = h;
+    auto _packet = new Packet(pkt->_params.ptr, pkt->_params.ptr_size, &params);
+    data->tensor_buf.output = _packet;
+
     return 0;
 }
 
@@ -331,8 +352,11 @@ extern "C" int DetectionStop(IHandle handle) {
         AppWarn("id:%d, detection is null", detection->id);
         return -1;
     }
+    if(detection->rgb_buf) {
+        free(detection->rgb_buf);
+    }
     detection->priors.clear();
-    free(detection);
+    delete detection;
     return 0;
 }
 

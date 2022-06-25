@@ -21,6 +21,9 @@
 #include <string.h>
 
 void FFmpegInit(void);
+void RGBInit(void);
+void ConvertYUV2RGB(unsigned char *src0,unsigned char *src1,unsigned char *src2,
+                    unsigned char *dst_ori, int width,int height, int format);
 
 #endif
 

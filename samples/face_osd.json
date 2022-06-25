@@ -19,7 +19,7 @@
         },
         {
             "name": "decode",
-            "path": "./plugins/official/libcpurgbdec.so",
+            "path": "./plugins/official/libcpuyuvdec.so",
             "input_map": [
                 {
                     "key": "decode_input",
@@ -29,23 +29,23 @@
             "output_map": [
                 {
                     "key": "decode_output",
-                    "val": "rgb"
+                    "val": "yuv"
                 }
             ]
         },
         {
             "name": "detection",
-            "path": "./plugins/libfacedetection/libdetection.so",
+            "path": "./plugins/libfacedetection/libdetection2.so",
             "input_map": [
                 {
                     "key": "detection_input",
-                    "val": "rgb"
+                    "val": "yuv"
                 }
             ],
             "output_map": [
                 {
                     "key": "detection_output",
-                    "val": "obj"
+                    "val": "meta_yuv"
                 }
             ],
             "params": {
@@ -58,27 +58,25 @@
             }
         },
         {
-            "name": "tracker_capture",
-            "path": "./plugins/tracker/libtracker.so",
+            "name": "osd",
+            "path": "./plugins/official/libosd.so",
             "input_map": [
                 {
-                    "//Note": "for multi inputs, the slower must connect to input[0]",
-                    "key": "tracker_input1",
-                    "val": "obj"
-                },
-                {
-                    "key": "tracker_input2",
-                    "val": "rgb"
+                    "key": "osd_input",
+                    "val": "meta_yuv"
                 }
             ],
             "output_map": [
                 {
-                    "key": "capture",
-                    "val": "json"
+                    "key": "osd_output",
+                    "val": "osd_264"
                 }
             ],
             "params": {
-              "capture_line": 0.66
+              "color": [255, 0, 0],
+              "thickness": 1,
+              "bitrate": 2000000,
+              "gop": 100
             }
         },
         {
@@ -87,28 +85,12 @@
             "input_map": [
                 {
                     "key": "preview_input",
-                    "val": "frame"
+                    "val": "osd_264"
                 }
             ],
             "output_map": [
                 {
                     "key": "preview_output",
-                    "val": "null"
-                }
-            ]
-        },
-        {
-            "name": "rabbitmq",
-            "path": "./plugins/official/librabbitmqq.so",
-            "input_map": [
-                {
-                    "key": "rabbitmq_input",
-                    "val": "json"
-                }
-            ],
-            "output_map": [
-                {
-                    "key": "rabbitmq_output",
                     "val": "null"
                 }
             ]

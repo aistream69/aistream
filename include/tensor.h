@@ -79,6 +79,7 @@ typedef struct {
 typedef struct {
     char* buf;
     int size;
+    int type;
     int width;
     int height;
     int frame_id;

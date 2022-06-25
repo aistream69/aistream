@@ -182,7 +182,13 @@ static int CreateEncoder(auto pkt, OSDParams* osd) {
      */
     encoder.ctx->gop_size = config.gop;
     encoder.ctx->max_b_frames = 0;
-    encoder.ctx->pix_fmt = AV_PIX_FMT_NV12;
+    //encoder.ctx->pix_fmt = AV_PIX_FMT_NV12;
+    if(pkt->_params.type == AV_PIX_FMT_YUVJ420P) {
+        encoder.ctx->pix_fmt = AV_PIX_FMT_YUV420P;
+    }
+    else {
+        encoder.ctx->pix_fmt = (AVPixelFormat)pkt->_params.type;
+    }
 
     if(encoder.codec->id == AV_CODEC_ID_H264) {
         // ultrafast, superfast, veryfast, faster, fast, medium, slow, slower, veryslow
@@ -216,8 +222,8 @@ static int CreateEncoder(auto pkt, OSDParams* osd) {
         return -1;
     }
     encoder.y_size = dst_w*dst_h;
-    encoder.uv_size = encoder.y_size/2;
-    AppDebug("create encoder success, id:%d,codec:%s", osd->id, codec_name);
+    encoder.uv_size = encoder.y_size/4;
+    AppDebug("create encoder success, id:%d,format:%d,codec:%s", osd->id, encoder.ctx->pix_fmt, codec_name);
 
     return 0;
 }
@@ -243,11 +249,24 @@ static int Encoding(auto pkt, OSDParams* osd, TensorData* data) {
     EncodeParams& encoder = osd->encoder;
     AVFrame* frame = encoder.frame;
     AVPacket* avpkt = encoder.avpkt;
-    uint8_t* y = (uint8_t* )pkt->_data;
-    uint8_t* uv = (uint8_t* )pkt->_data + encoder.y_size;
-
-    memcpy(frame->data[0], y, encoder.y_size);
-    memcpy(frame->data[1], uv, encoder.uv_size);
+    if(frame->format == AV_PIX_FMT_YUV420P) {
+        uint8_t* y = (uint8_t* )pkt->_data;
+        uint8_t* u = y + encoder.y_size;
+        uint8_t* v = u + encoder.uv_size;
+        memcpy(frame->data[0], y, encoder.y_size);
+        memcpy(frame->data[1], u, encoder.uv_size);
+        memcpy(frame->data[2], v, encoder.uv_size);
+    }
+    else if(frame->format == AV_PIX_FMT_NV12) {
+        uint8_t* y = (uint8_t* )pkt->_data;
+        uint8_t* uv = (uint8_t* )pkt->_data + encoder.y_size;
+        memcpy(frame->data[0], y, encoder.y_size);
+        memcpy(frame->data[1], uv, encoder.uv_size*2);
+    }
+    else {
+        printf("id:%d, unsupport yuv format:%d\n", osd->id, frame->format);
+        return -1;
+    }
     frame->pts = pkt->_params.frame_id;
     ret = avcodec_send_frame(encoder.ctx, frame);
     if(ret < 0) {

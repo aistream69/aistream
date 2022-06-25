@@ -5,6 +5,10 @@
       "config": "./samples/face_detection.json"
     },
     {
+      "name": "face_osd",
+      "config": "./samples/face_osd.json"
+    },
+    {
       "name": "debug",
       "config": "./samples/debug.json"
     }
