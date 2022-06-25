@@ -302,8 +302,8 @@ std::unique_ptr<char[]>  GetStrValFromFile(const char *filename,
     return GetStrValFromJson(buf.get(), name1, name2, name3);
 }
 
-std::unique_ptr<char[]> GetArrayBufFromJson(char *buf, 
-        const char *name1, const char *name2, const char *name3, int &size) {
+std::unique_ptr<char[]> GetArrayBufFromJson(char *buf, int &size, 
+            const char *name1, const char *name2, const char *name3) {
     char name[256];
     cJSON *pArray = NULL;
     cJSON *root, *pSub1, *pSub2, *pSub3;
@@ -362,14 +362,14 @@ end:
     return val;
 }
 
-std::unique_ptr<char[]> GetArrayBufFromFile(const char *filename, 
-        const char *name1, const char *name2, const char *name3, int &size) {
+std::unique_ptr<char[]> GetArrayBufFromFile(const char *filename, int &size, 
+                    const char *name1, const char *name2, const char *name3) {
     auto buf = ReadFile2Buf(filename);
     if(buf == nullptr) {
         AppWarn("%s, ReadFile2Buf failed", filename);
         return nullptr;
     }
-    return GetArrayBufFromJson(buf.get(), name1, name2, name3, size);
+    return GetArrayBufFromJson(buf.get(), size, name1, name2, name3);
 }
 
 std::unique_ptr<char[]> GetBufFromArray(char *buf, int index) {
@@ -509,6 +509,110 @@ int GetFileSize(const char *filename) {
     struct stat statbuf;
     stat(filename, &statbuf);
     return statbuf.st_size;
+}
+
+std::unique_ptr<char[]> AddStrJson(char *buf, const char *val, 
+        const char *name1, const char *name2, const char *name3) {
+    const char *name;
+    cJSON *pSub = NULL;
+    cJSON *root, *pSub1, *pSub2;
+
+    root = cJSON_Parse(buf);
+    if(root == NULL) {
+        AppError("parse json err, buf:%s", buf);
+        goto end;
+    }
+    if(name1 == NULL) {
+        AppError("name1 is null");
+        goto end;
+    }
+    if(name2 == NULL) {
+        pSub = root;
+        name = name1;
+        goto end;
+    }
+    pSub1 = cJSON_GetObjectItem(root, name1);
+    if(pSub1 == NULL) {
+        //printf("get json null, %s\n", name1);
+        goto end;
+    }
+    if(name3 == NULL) {
+        pSub = pSub1;
+        name = name2;
+        goto end;
+    }
+    pSub2 = cJSON_GetObjectItem(pSub1, name2);
+    if(pSub2 == NULL) {
+        //printf("get json null, %s\n", name2);
+        goto end;
+    }
+    pSub = pSub2;
+    name = name3;
+end:
+    std::unique_ptr<char[]> _val = nullptr;
+    if(pSub != NULL) {
+        cJSON_AddStringToObject(pSub, name, val);
+        char *tmp = cJSON_Print(root);
+        _val = std::make_unique<char[]>(strlen(tmp)+1);
+        strcpy(_val.get(), tmp);
+        free(tmp);
+    }
+    if(root != NULL) {
+        cJSON_Delete(root);
+    }
+    return _val;
+}
+
+std::unique_ptr<char[]> DelJsonObj(char *buf,
+        const char *name1, const char *name2, const char *name3) {
+    const char *name;
+    cJSON *pSub = NULL;
+    cJSON *root, *pSub1, *pSub2;
+
+    root = cJSON_Parse(buf);
+    if(root == NULL) {
+        AppError("parse json err, buf:%s", buf);
+        goto end;
+    }
+    if(name1 == NULL) {
+        AppError("name1 is null");
+        goto end;
+    }
+    if(name2 == NULL) {
+        pSub = root;
+        name = name1;
+        goto end;
+    }
+    pSub1 = cJSON_GetObjectItem(root, name1);
+    if(pSub1 == NULL) {
+        //printf("get json null, %s\n", name1);
+        goto end;
+    }
+    if(name3 == NULL) {
+        pSub = pSub1;
+        name = name2;
+        goto end;
+    }
+    pSub2 = cJSON_GetObjectItem(pSub1, name2);
+    if(pSub2 == NULL) {
+        //printf("get json null, %s\n", name2);
+        goto end;
+    }
+    pSub = pSub2;
+    name = name3;
+end:
+    std::unique_ptr<char[]> _val = nullptr;
+    if(pSub != NULL) {
+        cJSON_DeleteItemFromObject(pSub, name);
+        char *tmp = cJSON_Print(root);
+        _val = std::make_unique<char[]>(strlen(tmp)+1);
+        strcpy(_val.get(), tmp);
+        free(tmp);
+    }
+    if(root != NULL) {
+        cJSON_Delete(root);
+    }
+    return _val;
 }
 
 static int GetNginxPort(char* nginx_config_path, int& port) {

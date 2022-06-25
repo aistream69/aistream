@@ -19,6 +19,7 @@
 #include "log.h"
 #include "rtsp.h"
 #include "gat1400.h"
+#include "cJSON.h"
 
 static void request_login(struct evhttp_request* req, void* arg) {
     request_first_stage;
@@ -34,18 +35,6 @@ static void request_system_init(struct evhttp_request* req, void* arg) {
     Restful* rest = (Restful* )params->argc;
     MediaServer* media = rest->media;
     media->system_init = 1;
-}
-
-// http get
-static void request_system_alive(struct evhttp_request* req, void* arg) {
-    request_first_stage;
-    CommonParams* params = (CommonParams* )arg;
-    char** ppbody = (char **)params->argb;
-    Restful* rest = (Restful* )params->argc;
-    MediaServer* media = rest->media;
-    *ppbody = (char *)malloc(256);
-    // master can detect slave restart status from system_init
-    snprintf(*ppbody, 256, "{\"code\":0,\"msg\":\"success\",\"data\":{\"system_init\":%d}}", media->system_init);
 }
 
 /**********************************************************
@@ -88,8 +77,10 @@ static void request_add_rtsp(struct evhttp_request* req, void* arg) {
     CommonParams* params = (CommonParams* )arg;
     Restful* rest = (Restful* )params->argc;
     char* buf = (char* )params->arga;
+    char **ppbody = (char **)params->argb;
     MediaServer* media = rest->media;
     ObjParams* obj_params = media->GetObjParams();
+    ConfigParams* config = media->GetConfig();
     int id = GetIntValFromJson(buf, "id");
     auto url = GetStrValFromJson(buf, "data", "url");
     //int tcp_enable = GetIntValFromJson(buf, "data", "tcp_enable");
@@ -109,6 +100,10 @@ static void request_add_rtsp(struct evhttp_request* req, void* arg) {
     //obj->SetRtspUrl(url.get());
     obj->SetParams(buf);
     obj_params->Put2ObjQue(obj);
+    // cal load
+    *ppbody = (char *)malloc(256);
+    float load = (float)obj_params->GetObjNum()/config->GetObjMax()*100;
+    snprintf(*ppbody, 256, "{\"code\":0,\"msg\":\"success\",\"data\":{\"load\":%f}}", load);
 }
 
 static void request_add_rtmp(struct evhttp_request* req, void* arg) {
@@ -258,12 +253,53 @@ static void request_task_support(struct evhttp_request* req, void* arg) {
     request_first_stage;
 }
 
+static void request_system_status(struct evhttp_request* req, void* arg) {
+    request_first_stage;
+    CommonParams* params = (CommonParams* )arg;
+    char** ppbody = (char **)params->argb;
+    Restful* rest = (Restful* )params->argc;
+    MediaServer* media = rest->media;
+    *ppbody = (char *)malloc(256);
+    // master can detect slave restart status from system_init
+    snprintf(*ppbody, 256, "{\"code\":0,\"msg\":\"success\","
+             "\"data\":{\"system_init\":%d}}", media->system_init);
+}
+
+static int ObjStatus(std::shared_ptr<Object> obj, void* arg) {
+    cJSON *fld;
+    cJSON *data_root = (cJSON *)arg;
+    cJSON_AddItemToArray(data_root, fld = cJSON_CreateObject());
+    cJSON_AddNumberToObject(fld, "id", obj->GetId());
+    cJSON_AddNumberToObject(fld, "status", 1);
+    return 0;
+}
+
+static void request_obj_status(struct evhttp_request* req, void* arg) {
+    request_first_stage;
+    CommonParams* params = (CommonParams* )arg;
+    char** ppbody = (char **)params->argb;
+    Restful* rest = (Restful* )params->argc;
+    MediaServer* media = rest->media;
+    ObjParams* obj_params = media->GetObjParams();
+
+    cJSON* root = cJSON_CreateObject();
+    cJSON* data_root = cJSON_CreateObject();
+    cJSON* obj_root = cJSON_CreateArray();
+    cJSON_AddStringToObject(root, "code", "0");
+    cJSON_AddStringToObject(root, "msg", "success");
+    cJSON_AddItemToObject(root, "data", data_root);
+    cJSON_AddItemToObject(data_root, "obj", obj_root);
+    obj_params->TraverseObjQue(obj_root, ObjStatus);
+    *ppbody = cJSON_Print(root);
+    cJSON_Delete(root);
+}
+
 static UrlMap rest_url_map[] = {
+    // HTTP POST
     {"/api/system/login",       request_login},
     {"/api/system/logout",      request_logout},
     {"/api/system/init",        request_system_init},
     {"/api/system/set/output",  request_set_output},
-    {"/api/system/alive",       request_system_alive},
     {"/api/obj/add/rtsp",       request_add_rtsp},
     {"/api/obj/add/rtmp",       request_add_rtmp},
     {"/api/obj/add/gb28181",    request_add_gb28181},
@@ -274,7 +310,10 @@ static UrlMap rest_url_map[] = {
     {"/api/obj/del",            request_del_obj},
     {"/api/task/start",         request_start_task},
     {"/api/task/stop",          request_stop_task},
+    // HTTP GET
     {"/api/task/support",       request_task_support},
+    {"/api/system/status",      request_system_status},
+    {"/api/obj/status",         request_obj_status},
     {NULL, NULL}
 };
 
@@ -288,4 +327,7 @@ UrlMap* SlaveRestful::GetUrl(void) {
     return rest_url_map;
 }
 
+const char* SlaveRestful::GetType(void) {
+    return "slave";
+}
 

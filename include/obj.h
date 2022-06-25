@@ -53,9 +53,11 @@ public:
     ObjParams(MediaServer* _media);
     ~ObjParams(void);
     bool Put2ObjQue(std::shared_ptr<Object> obj);
+    void TraverseObjQue(void* arg, int (*cb)(std::shared_ptr<Object> obj, void* arg));
     std::shared_ptr<Object> GetObj(int id);
     bool DelFromObjQue(int id);
     void Start(void);
+    int GetObjNum(void);
     MediaServer* media;
 private:
     void ObjManager(void);

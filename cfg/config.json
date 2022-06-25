@@ -1,6 +1,6 @@
 {
     "master": {
-        "enable": 0,
+        "enable": 1,
         "rest_port": 11706
     },
     "slave": {
@@ -16,6 +16,13 @@
     "system": {
         "obj_max": 10000,
         "localhost": "124.222.53.156",
-        "nginx_path": "/usr/local/nginx"
+        "nginx_path": "/usr/local/nginx",
+        "db": {
+            "type": "mongodb",
+            "host": "127.0.0.1",
+            "port": 27017,
+            "user": "admin",
+            "password": "123456"
+        }
     }
 }

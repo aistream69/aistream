@@ -27,7 +27,7 @@ Pipeline::~Pipeline(void) {
 
 static bool ParseMap(const char* name, const char* ele_name, char* ele_buf, auto ele) {
     int size = 0;
-    auto buf = GetArrayBufFromJson(ele_buf, name, NULL, NULL, size);
+    auto buf = GetArrayBufFromJson(ele_buf, size, name);
     if(buf == nullptr) {
         AppWarn("get %s:%s failed", ele_name, name);
         return false;
@@ -62,7 +62,7 @@ static bool ParseMap(const char* name, const char* ele_name, char* ele_buf, auto
         
 static bool ParseElement(char* ptr, const char* alg_name, auto alg) {
     int size = 0;
-    auto buf = GetArrayBufFromJson(ptr, "pipeline", NULL, NULL, size);
+    auto buf = GetArrayBufFromJson(ptr, size, "pipeline");
     if(buf == nullptr) {
         AppWarn("get pipeline array failed, %s", alg_name);
         return false;
@@ -151,7 +151,7 @@ static void UpdateTaskByConfig(auto config_map, Pipeline* pipe) {
 static void UpdateTask(const char *filename, Pipeline* pipe) {
     int size = 0;
     std::map<std::string, std::string> config_map;
-    auto buf = GetArrayBufFromFile(filename, "tasks", NULL, NULL, size);
+    auto buf = GetArrayBufFromFile(filename, size, "tasks");
     if(buf == nullptr) {
         AppWarn("read %s failed", filename);
         return;

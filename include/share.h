@@ -49,15 +49,19 @@ double GetDoubleValFromJson(char *buf,
 double GetDoubleValFromFile(const char *filename, 
         const char *name1, const char *name2=NULL, const char *name3=NULL);
 std::unique_ptr<char[]> GetStrValFromJson(char *buf, 
-        const char *name1, const char *name2=NULL, const char *name3= NULL);
+        const char *name1, const char *name2=NULL, const char *name3=NULL);
 std::unique_ptr<char[]> GetStrValFromFile(const char *filename, 
         const char *name1, const char *name2=NULL, const char *name3=NULL);
 std::unique_ptr<char[]> GetObjBufFromJson(char *buf, 
-        const char *name1, const char *name2=NULL, const char *name3= NULL);
-std::unique_ptr<char[]> GetArrayBufFromJson(char *buf, 
-        const char *name1, const char *name2, const char *name3, int &size);
-std::unique_ptr<char[]> GetArrayBufFromFile(const char *filename, 
-        const char *name1, const char *name2, const char *name3, int &size);
+        const char *name1, const char *name2=NULL, const char *name3=NULL);
+std::unique_ptr<char[]> GetArrayBufFromJson(char *buf, int &size, 
+        const char *name1, const char *name2=NULL, const char *name3=NULL);
+std::unique_ptr<char[]> GetArrayBufFromFile(const char *filename, int &size, 
+        const char *name1, const char *name2=NULL, const char *name3=NULL);
+std::unique_ptr<char[]> AddStrJson(char *buf, const char *val, 
+        const char *name1, const char *name2=NULL, const char *name3=NULL);
+std::unique_ptr<char[]> DelJsonObj(char *buf,
+        const char *name1, const char *name2=NULL, const char *name3=NULL);
 std::unique_ptr<char[]> GetBufFromArray(char *buf, int index);
 
 #endif

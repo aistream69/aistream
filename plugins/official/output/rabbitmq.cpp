@@ -196,10 +196,12 @@ extern "C" IHandle MqStart(int channel, char* params) {
 extern "C" int MqProcess(IHandle handle, TensorData* data) {
     auto pkt = data->tensor_buf.input[0];
     char* json = pkt->_data;
-    pthread_mutex_lock(&mq.mtx);
-    MqSend(mq, json);
-    pthread_mutex_unlock(&mq.mtx);
-    //printf("##debug, mq, %s\n", json);
+    if(mq.init) {
+        pthread_mutex_lock(&mq.mtx);
+        MqSend(mq, json);
+        pthread_mutex_unlock(&mq.mtx);
+        //printf("##test, mq, %s\n", json);
+    }
     return 0;
 }
 

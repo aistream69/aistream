@@ -31,6 +31,16 @@ bool ObjParams::Put2ObjQue(std::shared_ptr<Object> obj) {
     return true;
 }
 
+void ObjParams::TraverseObjQue(void* arg, int (*cb)(std::shared_ptr<Object> obj, void* arg)) {
+    obj_mtx.lock();
+    for(auto itr = obj_vec.begin(); itr != obj_vec.end(); ++itr) {
+        if(cb(*itr, arg) != 0) {
+            break;
+        }
+    }
+    obj_mtx.unlock();
+}
+
 std::shared_ptr<Object> ObjParams::GetObj(int id) {
     std::shared_ptr<Object> obj = nullptr;
     obj_mtx.lock();
@@ -54,6 +64,10 @@ bool ObjParams::DelFromObjQue(int id) {
     }
     obj_mtx.unlock();
     return true;
+}
+
+int ObjParams::GetObjNum(void) {
+    return (int)obj_vec.size();
 }
 
 void ObjParams::ObjManager(void) {

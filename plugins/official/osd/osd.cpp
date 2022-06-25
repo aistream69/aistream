@@ -109,7 +109,7 @@ static void SetRectangle(auto pkt) {
 
 static int YuvColorInit(char* params) {
     int size = 0;
-    auto color = GetArrayBufFromJson(params, "color", NULL, NULL, size);
+    auto color = GetArrayBufFromJson(params, size, "color");
     if(color == nullptr || size != 3) {
         AppWarn("get color failed, size:%d, %s", size, params);
         return -1;

@@ -17,8 +17,8 @@
 #include "rest.h"
 #include <thread>
 
-static int SendHttpReply(struct evhttp_request *req, int code, char *buf) {
-    struct evbuffer *evb;
+static int SendHttpReply(struct evhttp_request* req, int code, char* buf) {
+    struct evbuffer* evb;
     evb = evbuffer_new();
     if(buf != NULL) {
         evbuffer_add_printf(evb, "%s", buf);
@@ -31,7 +31,167 @@ static int SendHttpReply(struct evhttp_request *req, int code, char *buf) {
     return 0;
 }
 
-int request_cb(struct evhttp_request *req, void (*http_task)(struct evhttp_request *, void *), void *arg) {
+static void CloseCallback(struct evhttp_connection* connection, void* arg) {
+    if(arg != NULL) {
+        event_base_loopexit((struct event_base* )arg, NULL);
+    }
+}
+
+static void ReadCallback(struct evhttp_request* req, void* arg) {
+    ev_ssize_t len;
+    unsigned char* buf;
+    struct evbuffer* evbuf;
+    HttpAck* ack = (HttpAck* )arg;
+    struct event_base* base = (struct event_base* )ack->arg;
+
+    if(req == NULL) {
+        printf("req is null\n");
+        return ;
+    }
+    evbuf = evhttp_request_get_input_buffer(req);
+    len = evbuffer_get_length(evbuf);
+    buf = evbuffer_pullup(evbuf, len);
+    if(buf != NULL) {
+        ack->buf = std::make_unique<char[]>(len+1);
+        memcpy(ack->buf.get(), buf, len);
+        ack->buf.get()[len] = 0;
+    }
+    evbuffer_drain(evbuf, len);
+    event_base_loopexit(base, NULL);
+}
+
+static void ErrCallback(enum evhttp_request_error error, void* arg) {
+    HttpAck* ack = (HttpAck* )arg;
+    struct event_base* base = NULL;
+    if(ack != NULL) {
+        base = (struct event_base* )ack->arg;
+        if(base) {
+            event_base_loopexit(base, NULL);
+        }
+    }
+}
+
+static int HttpClient(enum evhttp_cmd_type cmd, const char* url, 
+                      char* data, HttpAck* ack, int timeout_sec) {
+    char buf[64], req_url[512];
+    int ret = -1, len = 0, port;
+    const char *host, *path, *query;
+    struct timeval timeout;
+    struct event_base* base = NULL;
+    struct evdns_base* dnsbase =NULL;
+    struct evhttp_uri* http_uri = NULL;
+    struct evhttp_connection* evcon = NULL;
+    struct evhttp_request* request = NULL;
+    struct evkeyvalq* output_headers = NULL;
+    struct evbuffer* output_buffer = NULL;
+
+    http_uri = evhttp_uri_parse(url);
+    if (NULL == http_uri) {
+        printf("parse url failed, url:%s\n", url);
+        goto end;
+    }
+    host = evhttp_uri_get_host(http_uri);
+    if (NULL == host) {
+        printf("parse host failed, url:%s\n", url);
+        goto end;
+    }
+    port = evhttp_uri_get_port(http_uri);
+    if (port == -1) {
+        printf("parse port failed, url:%s\n", url);
+        goto end;
+    }
+    path = evhttp_uri_get_path(http_uri);
+    if(path == NULL) {
+        printf("get path failed, url:%s\n", url);
+        goto end;
+    }
+    if(strlen(path) == 0) {
+        path = "/";
+    }
+    query = evhttp_uri_get_query(http_uri);
+    if(NULL == query) {
+        snprintf(req_url, sizeof(req_url) - 1, "%s", path);
+    } else {
+        snprintf(req_url, sizeof(req_url) - 1, "%s?%s", path, query);
+    }
+
+    base = event_base_new();
+    if (NULL == base) {
+        printf("create event base failed, url:%s\n", url);
+        goto end;
+    }
+    dnsbase = evdns_base_new(base, EVDNS_BASE_INITIALIZE_NAMESERVERS);
+    evcon = evhttp_connection_base_new(base, dnsbase, host, port);
+    if (NULL == evcon) {
+        printf("base new failed, url:%s\n", url);
+        goto end;
+    }
+    ack->arg = base;
+    evhttp_connection_set_retries(evcon, 3);
+    evhttp_connection_set_timeout(evcon, timeout_sec);
+    evhttp_connection_set_closecb(evcon, CloseCallback, base);
+    request = evhttp_request_new(ReadCallback, ack);
+    if(request == NULL) {
+        printf("request new failed, url:%s\n", url);
+        goto end;
+    }
+    evhttp_request_set_error_cb(request, ErrCallback);
+
+    output_headers = evhttp_request_get_output_headers(request);
+    evhttp_add_header(output_headers, "Host", host);
+    evhttp_add_header(output_headers, "Connection", "keep-alive");
+    evhttp_add_header(output_headers, "Content-Type", "application/json");
+    if(data != NULL) {
+        len = strlen(data);
+        output_buffer = evhttp_request_get_output_buffer(request);
+        evbuffer_add(output_buffer, data, len);
+    }
+    evutil_snprintf(buf, sizeof(buf)-1, "%lu", (long unsigned int)len);
+    evhttp_add_header(output_headers, "Content-Length", buf);
+
+    ret = evhttp_make_request(evcon, request, cmd, req_url);
+    if (ret != 0) {
+        printf("make request failed\n");
+        goto end;
+    }
+    timeout.tv_sec = timeout_sec;
+    timeout.tv_usec = 0;
+    event_base_loopexit(base, &timeout);
+    ret = event_base_dispatch(base);
+    if(ret != 0) {
+        printf("dispatch failed\n");
+        goto end;
+    }
+    ret = 0;
+
+end:
+    if(evcon != NULL) {
+        evhttp_connection_free(evcon);
+    }
+    if(dnsbase != NULL) {
+        evdns_base_free(dnsbase, 0);
+    }
+    if(base != NULL) {
+        event_base_free(base);
+    }
+    if(http_uri != NULL) {
+        evhttp_uri_free(http_uri);
+    }
+    //if(request != NULL) {
+    //    evhttp_request_free(request);
+    //}
+    return ret;
+}
+
+int HttpPost(const char* url, char* data, HttpAck* ack, int timeout_sec) {
+    return HttpClient(EVHTTP_REQ_POST, url, data, ack, timeout_sec);
+}
+
+int HttpGet(const char* url, HttpAck* ack, int timeout_sec) {
+    return HttpClient(EVHTTP_REQ_GET, url, NULL, ack, timeout_sec);
+}
+
+int request_cb(struct evhttp_request* req, void (*http_task)(struct evhttp_request* , void* ), void* arg) {
     char *url;
     int code = HTTP_OK;
     char *pbody = NULL;
@@ -71,7 +231,8 @@ int request_cb(struct evhttp_request *req, void (*http_task)(struct evhttp_reque
         }
     }
     if(strcmp(cmdtype, "GET") != 0) {
-        AppDebug("%s:%s", url, cbuf);
+        Restful* rest = (Restful* )arg;
+        AppDebug("%s,%s:%s", rest->GetType(), url, cbuf);
     }
     if(http_task != NULL) {
         CommonParams params;
@@ -87,6 +248,14 @@ int request_cb(struct evhttp_request *req, void (*http_task)(struct evhttp_reque
     }
 
     return 0;
+}
+
+void CheckErrMsg(const char* err_msg, char** ppbody) {
+    if(strlen(err_msg) > 0) {
+        printf("%s\n", err_msg);
+        *ppbody = (char *)malloc(256);
+        snprintf(*ppbody, 256, "{\"code\":-1,\"msg\":\"%s\",\"data\":{}}", err_msg);
+    }
 }
 
 Restful::Restful(MediaServer *_media)
@@ -138,7 +307,7 @@ static void RestApiThread(Restful* rest) {
     UrlMap* url_map = rest->GetUrl();
     ConfigParams* config = rest->media->GetConfig();
     sleep(1);
-    AppDebug("%s:%d start ...", config->LocalIp(), port);
+    AppDebug("%s, %s:%d start ...", rest->GetType(), config->LocalIp(), port);
     HttpTask(url_map, port, rest);
     AppDebug("run ok");
 }

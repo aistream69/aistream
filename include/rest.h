@@ -48,6 +48,11 @@ do {                                                \
     }                                               \
 } while(0)
 
+typedef struct {
+    std::unique_ptr<char[]> buf;
+    void *arg;
+} HttpAck;
+
 class MediaServer;
 class Restful {
 public:
@@ -56,15 +61,17 @@ public:
     void Start(void);
     virtual int GetPort(void) {return 8098;}
     virtual UrlMap* GetUrl(void){return NULL;}
+    virtual const char* GetType(void){return "";}
     MediaServer* media;
 private:
 };
 
 class MasterRestful : public Restful {
 public:
-    MasterRestful(MediaServer* _media):Restful(_media){}
+    MasterRestful(MediaServer* _media);
     virtual int GetPort(void) {return port;}
     virtual UrlMap* GetUrl(void);
+    virtual const char* GetType(void);
 private:
     int port;
 };
@@ -74,11 +81,15 @@ public:
     SlaveRestful(MediaServer* _media);
     virtual int GetPort(void) {return port;}
     virtual UrlMap* GetUrl(void);
+    virtual const char* GetType(void);
 private:
     int port;
 };
 
-int request_cb(struct evhttp_request *req, void (*http_task)(struct evhttp_request *, void *), void *arg);
+int HttpPost(const char* url, char* data, HttpAck* ack, int timeout_sec = 3);
+int HttpGet(const char* url, HttpAck* ack, int timeout_sec = 3);
+int request_cb(struct evhttp_request* req, void (*http_task)(struct evhttp_request *, void *), void* arg);
+void CheckErrMsg(const char* err_msg, char** ppbody);
 
 #endif
 
