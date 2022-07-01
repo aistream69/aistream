@@ -421,6 +421,7 @@ static void *PreviewThread(void *arg) {
                         preview->id, pkt.stream_index, preview->stream_index, exception);
                 break;
             }
+            av_free_packet(&pkt);
             continue;
         }
         AVStream* out_stream = preview->ofmt_ctx_v->streams[0];

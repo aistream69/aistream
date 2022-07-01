@@ -28,6 +28,7 @@
 #include "log.h"
 
 #define POST_BUF_MAX    1024
+#define ACK_BODY_LEN    256
 
 typedef struct {
     const char *url;

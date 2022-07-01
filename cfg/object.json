@@ -3,7 +3,7 @@
         "lib": "plugins/official/librtsp.so"
     },
     "rtmp": {
-        "lib": "todo"
+        "lib": "plugins/official/librtmp.so"
     },
     "gb28181": {
         "lib": "todo"

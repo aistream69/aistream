@@ -18,6 +18,7 @@
 #include "config.h"
 #include "log.h"
 #include "rtsp.h"
+#include "rtmp.h"
 #include "gat1400.h"
 #include "cJSON.h"
 
@@ -83,8 +84,6 @@ static void request_add_rtsp(struct evhttp_request* req, void* arg) {
     ConfigParams* config = media->GetConfig();
     int id = GetIntValFromJson(buf, "id");
     auto url = GetStrValFromJson(buf, "data", "url");
-    //int tcp_enable = GetIntValFromJson(buf, "data", "tcp_enable");
-    //tcp_enable = tcp_enable < 0 ? 0 : tcp_enable;
     if(id < 0 || url == nullptr) {
         AppWarn("get id or url failed, %s", buf);
         return;
@@ -96,18 +95,50 @@ static void request_add_rtsp(struct evhttp_request* req, void* arg) {
     }
     auto obj = std::make_shared<Rtsp>(media);
     obj->SetId(id);
-    //obj->SetTcpEnable(tcp_enable);
-    //obj->SetRtspUrl(url.get());
     obj->SetParams(buf);
     obj_params->Put2ObjQue(obj);
-    // cal load
-    *ppbody = (char *)malloc(256);
+    // calc load
+    *ppbody = (char *)malloc(ACK_BODY_LEN);
     float load = (float)obj_params->GetObjNum()/config->GetObjMax()*100;
-    snprintf(*ppbody, 256, "{\"code\":0,\"msg\":\"success\",\"data\":{\"load\":%f}}", load);
+    snprintf(*ppbody, ACK_BODY_LEN, "{\"code\":0,\"msg\":\"success\",\"data\":{\"load\":%f}}", load);
 }
 
+/**********************************************************
+{
+  "id":99,
+  "data":{
+    "url":"rtmp://127.0.0.1:1935/myapp/stream99"
+  }
+} 
+**********************************************************/
 static void request_add_rtmp(struct evhttp_request* req, void* arg) {
     request_first_stage;
+    CommonParams* params = (CommonParams* )arg;
+    Restful* rest = (Restful* )params->argc;
+    char* buf = (char* )params->arga;
+    char **ppbody = (char **)params->argb;
+    MediaServer* media = rest->media;
+    ObjParams* obj_params = media->GetObjParams();
+    ConfigParams* config = media->GetConfig();
+    int id = GetIntValFromJson(buf, "id");
+    auto url = GetStrValFromJson(buf, "data", "url");
+    if(id < 0 || url == nullptr) {
+        AppWarn("get id or url failed, %s", buf);
+        return;
+    }
+    auto _obj = obj_params->GetObj(id);
+    if(_obj != nullptr) {
+        AppWarn("obj %d already exist", id);
+        return;
+    }
+    auto obj = std::make_shared<Rtmp>(media);
+    obj->SetId(id);
+    obj->SetParams(buf);
+    obj_params->Put2ObjQue(obj);
+    // calc load
+    *ppbody = (char *)malloc(ACK_BODY_LEN);
+    float load = (float)obj_params->GetObjNum()/config->GetObjMax()*100;
+    snprintf(*ppbody, ACK_BODY_LEN, "{\"code\":0,\"msg\":\"success\",\"data\":{\"load\":%f}}", load);
 }
 
 static void request_add_gb28181(struct evhttp_request* req, void* arg) {
@@ -259,9 +290,9 @@ static void request_system_status(struct evhttp_request* req, void* arg) {
     char** ppbody = (char **)params->argb;
     Restful* rest = (Restful* )params->argc;
     MediaServer* media = rest->media;
-    *ppbody = (char *)malloc(256);
-    // master can detect slave restart status from system_init
-    snprintf(*ppbody, 256, "{\"code\":0,\"msg\":\"success\","
+    *ppbody = (char *)malloc(ACK_BODY_LEN);
+    // master detect slave restart status from system_init
+    snprintf(*ppbody, ACK_BODY_LEN, "{\"code\":0,\"msg\":\"success\","
              "\"data\":{\"system_init\":%d}}", media->system_init);
 }
 

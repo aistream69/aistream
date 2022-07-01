@@ -20,23 +20,26 @@
 #include <stdlib.h>
 #include <string.h>
 #include "obj.h"
+#include "share.h"
+#include "log.h"
 
 class Rtsp : public Object {
 public:
     Rtsp(MediaServer* _media):Object(_media) {
-        //tcp_enable = 0;
-        //memset(url, 0, sizeof(url));
         memset(lib, 0, sizeof(lib));
     }
     ~Rtsp(void) {}
-    //void SetTcpEnable(int val) {tcp_enable = val;}
-    //void SetRtspUrl(char *str) {strncpy(url, str, sizeof(url));}
-    //char* GetRtspUrl(void) {return url;}
-    virtual char* GetPath(char* path);
+    virtual char* GetPath(char* path) {
+        auto name = GetStrValFromFile(path, "rtsp", "lib");
+        if(name == nullptr) {
+            AppWarn("get path failed, %s", path);
+            return lib;
+        }
+        strncpy(lib, name.get(), sizeof(lib));
+        return lib;
+    }
 private:
     char lib[256];
-    //char url[256];
-    //int tcp_enable;
 };
 
 #endif

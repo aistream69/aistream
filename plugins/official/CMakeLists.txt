@@ -17,7 +17,8 @@ link_directories(
 
 add_compile_options(-fPIC)
 
-add_library(rtsp SHARED rtsp/dl_rtsp.cpp)
+add_library(rtsp SHARED rtsp/rtsp.cpp)
+add_library(rtmp SHARED rtmp/rtmp.cpp)
 add_library(cpurgbdec SHARED decode/decode_cpu_rgb.cpp)
 add_library(cpuyuvdec SHARED decode/decode_cpu_yuv.cpp)
 add_library(preview SHARED preview/preview.cpp)
@@ -25,6 +26,7 @@ add_library(osd SHARED osd/osd.cpp)
 add_library(rabbitmqq SHARED output/rabbitmq.cpp)
 
 add_dependencies(rtsp rtsplib)
+add_dependencies(rtmp common)
 add_dependencies(cpurgbdec common)
 add_dependencies(cpuyuvdec common)
 add_dependencies(preview common)
@@ -37,6 +39,10 @@ target_link_libraries(rtsp
     -lgroupsock
     -lBasicUsageEnvironment
     -lUsageEnvironment
+    -Wl,-rpath,lib
+    )
+target_link_libraries(rtmp
+    -lcommon
     -Wl,-rpath,lib
     )
 target_link_libraries(cpurgbdec

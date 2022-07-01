@@ -15,6 +15,7 @@ include_directories(
     "${PROJECT_ROOT_PATH}/include"
     "${PROJECT_ROOT_PATH}/src/backend/dylib"
     "${PLUGINS_OFFICIAL}/rtsp"
+    "${PLUGINS_OFFICIAL}/rtmp"
     "${PLUGINS_OFFICIAL}/gat1400"
     "${PROJECT_ROOT_PATH}/work/cjson/inc"
     "${PROJECT_ROOT_PATH}/work/3rdparty/libevent/release/include"
@@ -44,7 +45,6 @@ add_executable(
     share.cpp
     db.cpp
     ../src/backend/dylib/dylib.cpp
-    "${PLUGINS_OFFICIAL}/rtsp/rtsp.cpp"
     "${PLUGINS_OFFICIAL}/gat1400/gat1400.cpp"
     )
 
