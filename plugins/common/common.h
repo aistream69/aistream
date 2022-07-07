@@ -24,6 +24,8 @@ void FFmpegInit(void);
 void RGBInit(void);
 void ConvertYUV2RGB(unsigned char *src0,unsigned char *src1,unsigned char *src2,
                     unsigned char *dst_ori, int width,int height, int format);
+void ConvertRGBToYUV420p(int w, int h, unsigned char* rgb, 
+                         unsigned char* yuv, unsigned char* work_space);
 
 #endif
 

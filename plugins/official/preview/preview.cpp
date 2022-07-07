@@ -48,16 +48,13 @@ typedef struct {
     AVIOContext *avio;
     int find_idr;
     int stream_index;
+    int last_ts_num;
+    int last_ts_same_cnt;
     std::mutex mtx;
     std::queue<std::shared_ptr<Packet>> _queue;
     int running;
+    int _running;
 } PreviewParams;
-
-typedef struct {
-    int id;
-    int last_ts_num;
-    int last_ts_same_cnt;
-} TsFile;
 
 typedef struct {
     int queue_len;
@@ -65,7 +62,7 @@ typedef struct {
     NginxParams nginx;
     pthread_t pid;
     std::mutex obj_mtx;
-    std::vector<TsFile> obj_vec;
+    std::vector<PreviewParams*> obj_vec;
     int running;
 } PreviewConfig;
 
@@ -89,12 +86,12 @@ static int DelLastTsFile(char *path) {
     return 0;
 }
 
-static int DelOldTsFile(auto _ts) { // ugly code
+static int DelOldTsFile(auto preview) { // ugly code
     FILE *fp;
     int j, k;
     char buf[256], m3u8[384], ts_file[384];
 
-    snprintf(m3u8, sizeof(m3u8), "%s/m3u8/stream%d/play.m3u8", config.nginx.workdir, _ts->id);
+    snprintf(m3u8, sizeof(m3u8), "%s/m3u8/stream%d/play.m3u8", config.nginx.workdir, preview->id);
     if(!access(m3u8, F_OK)) {
         fp = fopen(m3u8, "rb");
         if(fp == NULL) {
@@ -131,27 +128,27 @@ static int DelOldTsFile(auto _ts) { // ugly code
                         break;
                     }
                     snprintf(ts_file, sizeof(ts_file), 
-                            "%s/m3u8/stream%d/play%d.ts", config.nginx.workdir, _ts->id, ts_num);
+                            "%s/m3u8/stream%d/play%d.ts", config.nginx.workdir, preview->id, ts_num);
                     if(!access(ts_file, F_OK)) {
                         remove(ts_file);
                     }
                 }
             }
-            if(latest_num != _ts->last_ts_num) {
-                _ts->last_ts_num = latest_num;
-                _ts->last_ts_same_cnt = 0;
+            if(latest_num != preview->last_ts_num) {
+                preview->last_ts_num = latest_num;
+                preview->last_ts_same_cnt = 0;
             }
             else {
-                _ts->last_ts_same_cnt ++;
-                if(_ts->last_ts_same_cnt > 360) {
-                    AppWarn("stream%d, last ts file is too long, rm m3u8", _ts->id);
+                preview->last_ts_same_cnt ++;
+                if(preview->last_ts_same_cnt > 360) {
+                    AppWarn("stream%d, last ts file is too long, rm m3u8", preview->id);
                     remove(m3u8);
-                    _ts->last_ts_same_cnt = 0;
+                    preview->last_ts_same_cnt = 0;
                 }
             }
             for(k = 0; k < 3; k ++) {
                 snprintf(ts_file, sizeof(ts_file), 
-                        "%s/m3u8/stream%d/play%d.ts", config.nginx.workdir, _ts->id, latest_num + k);
+                        "%s/m3u8/stream%d/play%d.ts", config.nginx.workdir, preview->id, latest_num + k);
                 if(access(ts_file, F_OK) != 0) {
                     continue;
                 }
@@ -167,7 +164,7 @@ static int DelOldTsFile(auto _ts) { // ugly code
     else {
         for(k = 0; k < 3; k ++) {
             snprintf(ts_file, sizeof(ts_file), 
-                    "%s/m3u8/stream%d/play%d.ts", config.nginx.workdir, _ts->id, k);
+                    "%s/m3u8/stream%d/play%d.ts", config.nginx.workdir, preview->id, k);
             if(access(ts_file, F_OK) != 0) {
                 continue;
             }
@@ -180,19 +177,6 @@ static int DelOldTsFile(auto _ts) { // ugly code
     }
 
     return 0;
-}
-
-static void *PreviewDaemonThread(void *arg) {
-    while(config.running) {
-        std::unique_lock<std::mutex> lock(config.obj_mtx);
-        auto obj_vec = config.obj_vec;
-        for(auto itr = obj_vec.begin(); itr != obj_vec.end(); ++itr) {
-            DelOldTsFile(itr);
-        }
-        lock.unlock();
-        sleep(5);
-    }
-    return NULL;
 }
 
 //if data is zero, waiting until valid, don't return, else avformat_open_input may be panic
@@ -228,7 +212,7 @@ static int ReadVideoPacket(void *opaque, uint8_t *buf, int size){
             }
             preview->frame_id = pkt->_params.frame_id;
         }
-    } while(len == 0 && preview->running);
+    } while(len == 0 && preview->_running);
     return len;
 }
 
@@ -259,7 +243,7 @@ static int CreatePreview(PreviewParams* preview) {
 
     printf("preview, %d, waiting stream ...\n", preview->id);
     while(1) {
-        if(!preview->running){
+        if(!preview->_running){
             printf("preview thread exit, id:%d\n", preview->id);
             return -1;
         }
@@ -396,7 +380,6 @@ static int DestroyPreview(PreviewParams *preview) {
     return 0;
 }
 
-// TODO : preview daemon thread, use recursion function?
 static void *PreviewThread(void *arg) {
     AVPacket pkt;
     int frame_index = 0, exception = 0;
@@ -404,10 +387,10 @@ static void *PreviewThread(void *arg) {
 
     if(CreatePreview(preview) != 0) {
         AppWarn("init preview failed, id:%d,type:%s", preview->id, preview->type);
-        preview->running = 0;
+        preview->_running = 0;
         return NULL;
     }
-    while(preview->running) {
+    while(preview->_running) {
         if(av_read_frame(preview->ifmt_ctx, &pkt) < 0) {
             printf("id:%d, av_read_frame failed, continue\n", preview->id);
             usleep(200000);
@@ -448,10 +431,40 @@ static void *PreviewThread(void *arg) {
         frame_index++;
         exception = 0;
     }
-    preview->running = 0;
     DestroyPreview(preview);
+    preview->_running = 0;
     AppDebug("id:%d, run ok", preview->id);
 
+    return NULL;
+}
+
+static int PreviewDaemon(auto preview) {
+    if(preview->running == 1 && preview->_running == 0) {
+        AppWarn("id:%d,detect exception,restart it ...", preview->id);
+        if(pthread_join(preview->pid, NULL) != 0) {
+            AppError("pthread join failed, %s", strerror(errno));
+        }
+        preview->_running = 1;
+        if(pthread_create(&preview->pid, NULL, PreviewThread, preview) != 0) {
+            AppError("create preview thread failed, id:%d", preview->id);
+        }
+        preview->last_ts_num = 0;
+        preview->last_ts_same_cnt = 0;
+    }
+    return 0;
+}
+
+static void *PreviewDaemonThread(void *arg) {
+    while(config.running) {
+        std::unique_lock<std::mutex> lock(config.obj_mtx);
+        auto obj_vec = config.obj_vec;
+        for(auto itr = obj_vec.begin(); itr != obj_vec.end(); ++itr) {
+            DelOldTsFile(*itr);
+            PreviewDaemon(*itr);
+        }
+        lock.unlock();
+        sleep(5);
+    }
     return NULL;
 }
 
@@ -504,18 +517,17 @@ extern "C" IHandle PreviewStart(int channel, char* params) {
         AppWarn("unsupport type : %s", preview->type);
         return preview;
     }
+    preview->_running = 1;
     preview->running = 1;
     if(pthread_create(&preview->pid, NULL, PreviewThread, preview) != 0) {
         AppError("create preview thread failed, id:%d", channel);
         return preview;
     }
 
-    TsFile ts;
-    ts.id = channel;
-    ts.last_ts_num = 0;
-    ts.last_ts_same_cnt = 0;
+    preview->last_ts_num = 0;
+    preview->last_ts_same_cnt = 0;
     std::unique_lock<std::mutex> lock(config.obj_mtx);
-    config.obj_vec.push_back(ts);
+    config.obj_vec.push_back(preview);
 
     return preview;
 }
@@ -546,13 +558,14 @@ extern "C" int PreviewProcess(IHandle handle, TensorData* data) {
 extern "C" int PreviewStop(IHandle handle) {
     PreviewParams* preview = (PreviewParams* )handle;
     preview->running = 0;
+    preview->_running = 0;
     if(pthread_join(preview->pid, NULL) != 0) {
         AppError("pthread join failed, %s", strerror(errno));
     }
     std::unique_lock<std::mutex> lock(config.obj_mtx);
     auto obj_vec = config.obj_vec;
     for(auto itr = obj_vec.begin(); itr != obj_vec.end(); ++itr) {
-        if(itr->id == preview->id) {
+        if((*itr)->id == preview->id) {
             obj_vec.erase(itr);
             break;
         }

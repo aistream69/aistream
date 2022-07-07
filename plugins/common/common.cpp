@@ -76,6 +76,72 @@ static void InitConvertTable(void) {
         clp[ind++]=255;
 }
 
+void ConvertRGBToYUV420p(int w, int h, unsigned char* rgb, 
+                         unsigned char* yuv, unsigned char* work_space) {
+    int i,j;
+    unsigned char *u,*v,*y,*uu,*vv;
+    unsigned char *pu1,*pu2,*pu3,*pu4;
+    unsigned char *pv1,*pv2,*pv3,*pv4;
+    unsigned char *r,*g,*b;
+
+    uu = work_space;
+    vv = work_space + w*h;
+    y=yuv;
+    u=uu;
+    v=vv;
+    // Get r,g,b pointers from image data....
+    r=rgb;
+    g=rgb+1;
+    b=rgb+2;
+    //Get YUV values for rgb values...
+    for(i=0;i<h;i++) {
+        for(j=0;j<w;j++) {
+            *y++=( RGB2YUV_YR[*r] +RGB2YUV_YG[*g]+RGB2YUV_YB[*b]+1048576)>>16;
+            *u++=(-RGB2YUV_UR[*r] -RGB2YUV_UG[*g]+RGB2YUV_UBVR[*b]+8388608)>>16;
+            *v++=( RGB2YUV_UBVR[*r]-RGB2YUV_VG[*g]-RGB2YUV_VB[*b]+8388608)>>16;
+            r+=3;
+            g+=3;
+            b+=3;
+        }
+    }
+    // Now sample the U & V to obtain YUV 4:2:0 format
+    u=yuv+w*h;
+    v=u+(w*h)/4;
+    // For U
+    pu1=uu;
+    pu2=pu1+1;
+    pu3=pu1+w;
+    pu4=pu3+1;
+    // For V
+    pv1=vv;
+    pv2=pv1+1;
+    pv3=pv1+w;
+    pv4=pv3+1;
+    // Do sampling....
+    for(i=0;i<h;i+=2) {
+        for(j=0;j<w;j+=2) {
+            *u++=(*pu1+*pu2+*pu3+*pu4)>>2;
+            *v++=(*pv1+*pv2+*pv3+*pv4)>>2;
+            pu1+=2;
+            pu2+=2;
+            pu3+=2;
+            pu4+=2;
+            pv1+=2;
+            pv2+=2;
+            pv3+=2;
+            pv4+=2;
+        }
+        pu1+=w;
+        pu2+=w;
+        pu3+=w;
+        pu4+=w;
+        pv1+=w;
+        pv2+=w;
+        pv3+=w;
+        pv4+=w;
+    }
+}
+
 static void ConvertNv12ToRGB24(unsigned char *src0, unsigned char *src1, unsigned char *dst_ori, int width,int height) {
     int y1,y2,u,v;
     unsigned char *py1,*py2;

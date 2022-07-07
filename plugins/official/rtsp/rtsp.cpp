@@ -48,7 +48,7 @@ static void RtspDaemon(RtspParams* rtsp_params) {
         gettimeofday(&tv, NULL);
         _now_sec = tv.tv_sec;
         if(_now_sec - rtsp_params->rtsp_beat > 15) {
-            AppWarn("id:%d,detected exception,restart it ...", rtsp_params->id);
+            AppWarn("id:%d,detect exception,restart it ...", rtsp_params->id);
             if(player->playhandle != NULL) {
                 RtspPlayerStop(player);
             }
