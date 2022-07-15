@@ -130,7 +130,7 @@ static std::unique_ptr<char[]> MakeJson(int id, BObject& det, char *scene_url, c
     cJSON* obj =  cJSON_CreateObject();
     cJSON_AddItemToArray(object_root, obj);
     cJSON_AddStringToObject(obj, "type", "face");
-    cJSON_AddNumberToObject(obj, "trackId", track_id);
+    cJSON_AddNumberToObject(obj, "trackid", track_id);
     cJSON_AddNumberToObject(obj, "x", x);
     cJSON_AddNumberToObject(obj, "y", y);
     cJSON_AddNumberToObject(obj, "w", w);

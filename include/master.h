@@ -56,18 +56,19 @@ public:
 class MObjParam : public std::enable_shared_from_this<MObjParam> {
 public:
     MObjParam(void) {
-        status = 1;
+        status = 0;
         params = nullptr;
         slave = nullptr;
     }
     ~MObjParam(void) {
     }
     void AddTask(char* params);
-    void DelTask(char *name);
+    bool DelTask(char *name);
+    std::unique_ptr<char[]> GetTask(void);
     int id;
     int status;
     std::mutex m_task_mtx;
-    std::vector<std::shared_ptr<std::string>> m_task_vec;
+    std::vector<std::string> m_task_vec;
     std::unique_ptr<char[]> params;
     std::shared_ptr<SlaveParam> slave;
 };
@@ -85,6 +86,7 @@ public:
     std::mutex m_obj_mtx;
     std::vector<std::shared_ptr<MObjParam>> m_obj_vec;
     std::unique_ptr<char[]> output;
+    std::vector<std::string> cfg_task_vec;
     MediaServer* media;
 };
 

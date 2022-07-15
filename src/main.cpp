@@ -69,11 +69,11 @@ static void SigHandler(const int signal) {
 
 int main(int argc, char *argv[]) {
     DirCheck("log");
-    AppDebug("Built:%s %s, version:%s, aistream start ...", __TIME__, __DATE__, SW_VERSION);
+    AppDebug("Built:%s %s, version:%s, %s start ...", __TIME__, __DATE__, SW_VERSION, SERVER_NAME);
     signal(SIGCHLD, SigHandler);
     MainProcess();
     while(1) {
-        if(!access("aistream.stop", F_OK)) {
+        if(!access(DEBUG_STOP, F_OK)) {
             break;
         }
         sleep(2);

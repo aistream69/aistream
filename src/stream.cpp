@@ -46,7 +46,7 @@ void MediaServer::Run(void) {
         master->Start();
     }
     while(running) {
-        if(!access("aistream.stop", F_OK)) {
+        if(!access(DEBUG_STOP, F_OK)) {
             running = 0;
             break;
         }

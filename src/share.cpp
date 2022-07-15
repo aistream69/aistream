@@ -354,7 +354,7 @@ end:
         free(tmp);
     }
     else {
-        printf("pArray is null\n");
+        //printf("pArray is null\n");
     }
     if(root != NULL) {
         cJSON_Delete(root);
@@ -659,10 +659,11 @@ void NginxInit(NginxParams& nginx) {
         AppWarn("get nginx path failed");
         return;
     }
-    snprintf(cfg_file, sizeof(cfg_file), "%s/conf/servers/hls.conf", nginx_path.get());
+    //snprintf(cfg_file, sizeof(cfg_file), "%s/conf/servers/hls.conf", nginx_path.get());
+    snprintf(cfg_file, sizeof(cfg_file), "%s/conf/nginx.conf", nginx_path.get());
     GetNginxPort(cfg_file, nginx.http_port);
     if(nginx.http_port == 0) {
-        nginx.http_port = 8090;
+        nginx.http_port = 8080;
         AppWarn("get nginx http port failed, use default %d", nginx.http_port);
     }
     GetNginxRoot(cfg_file, nginx.workdir);

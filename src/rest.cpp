@@ -240,6 +240,7 @@ int request_cb(struct evhttp_request* req, void (*http_task)(struct evhttp_reque
         params.argb = &pbody;
         params.argc = arg;
         params.argd = &code;
+        params.arge = url;
         http_task((struct evhttp_request *)(-1), &params);
     }
     SendHttpReply(req, code, pbody);
@@ -250,22 +251,32 @@ int request_cb(struct evhttp_request* req, void (*http_task)(struct evhttp_reque
     return 0;
 }
 
-void CheckErrMsg(const char* err_msg, char** ppbody) {
-    if(strlen(err_msg) > 0) {
-        printf("%s\n", err_msg);
-        *ppbody = (char *)malloc(256);
-        snprintf(*ppbody, 256, "{\"code\":-1,\"msg\":\"%s\",\"data\":{}}", err_msg);
+void CheckErrMsg(const char* msg, char** ppbody) {
+    int len = strlen(msg);
+    if(len > 0) {
+        printf("%s\n", msg);
+        *ppbody = (char* )malloc(len+64);
+        snprintf(*ppbody, len+64, "{\"code\":-1,\"msg\":\"%s\",\"data\":{}}", msg);
     }
 }
 
-Restful::Restful(MediaServer *_media)
+void SetAckMsg(const char* msg, char** ppbody) {
+    int len = strlen(msg);
+    if(len > 0) {
+        *ppbody = (char* )malloc(len+64);
+        snprintf(*ppbody, len+64, "{\"code\":-1,\"msg\":\"%s\",\"data\":{}}", msg);
+    }
+}
+
+Restful::Restful(MediaServer* _media)
   : media(_media) {
 }
 
 Restful::~Restful(void) {
 }
 
-static int HttpTask(UrlMap *url_map, int port, void *arg) {
+void request_gencb(struct evhttp_request* req, void* arg);
+static int HttpTask(UrlMap* url_map, int port, void* arg) {
     struct event_base *base;
     struct evhttp *http;
     struct evhttp_bound_socket *handle;
@@ -291,7 +302,8 @@ static int HttpTask(UrlMap *url_map, int port, void *arg) {
             break;
         }
     }
-    //evhttp_set_gencb(http, request_gencb, NULL);
+    evhttp_set_gencb(http, request_gencb, NULL);
+
     /* Now we tell the evhttp what port to listen on */
     handle = evhttp_bind_socket_with_handle(http, "0.0.0.0", port);
     if (!handle) {

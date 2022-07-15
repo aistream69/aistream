@@ -21,6 +21,7 @@
 #include <string.h>
 #include <event2/event.h>
 #include <event2/http.h>
+#include <event2/http_struct.h>
 #include <event2/buffer.h>
 #include <event2/util.h>
 #include <event2/keyvalq_struct.h>
@@ -91,6 +92,7 @@ int HttpPost(const char* url, char* data, HttpAck* ack, int timeout_sec = 3);
 int HttpGet(const char* url, HttpAck* ack, int timeout_sec = 3);
 int request_cb(struct evhttp_request* req, void (*http_task)(struct evhttp_request *, void *), void* arg);
 void CheckErrMsg(const char* err_msg, char** ppbody);
+void SetAckMsg(const char* msg, char** ppbody);
 
 #endif
 

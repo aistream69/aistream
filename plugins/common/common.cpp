@@ -94,8 +94,8 @@ void ConvertRGBToYUV420p(int w, int h, unsigned char* rgb,
     g=rgb+1;
     b=rgb+2;
     //Get YUV values for rgb values...
-    for(i=0;i<h;i++) {
-        for(j=0;j<w;j++) {
+    for(i=0; i<h; i++) {
+        for(j=0; j<w; j++) {
             *y++=( RGB2YUV_YR[*r] +RGB2YUV_YG[*g]+RGB2YUV_YB[*b]+1048576)>>16;
             *u++=(-RGB2YUV_UR[*r] -RGB2YUV_UG[*g]+RGB2YUV_UBVR[*b]+8388608)>>16;
             *v++=( RGB2YUV_UBVR[*r]-RGB2YUV_VG[*g]-RGB2YUV_VB[*b]+8388608)>>16;
@@ -118,8 +118,8 @@ void ConvertRGBToYUV420p(int w, int h, unsigned char* rgb,
     pv3=pv1+w;
     pv4=pv3+1;
     // Do sampling....
-    for(i=0;i<h;i+=2) {
-        for(j=0;j<w;j+=2) {
+    for(i=0; i<h; i+=2) {
+        for(j=0; j<w; j+=2) {
             *u++=(*pu1+*pu2+*pu3+*pu4)>>2;
             *v++=(*pv1+*pv2+*pv3+*pv4)>>2;
             pu1+=2;
@@ -147,7 +147,6 @@ static void ConvertNv12ToRGB24(unsigned char *src0, unsigned char *src1, unsigne
     unsigned char *py1,*py2;
     int i,j, c1, c2, c3, c4;
     unsigned char *d1, *d2;
-    int cnt = 0;
     
     py1=src0;
     py2=py1+width;
@@ -181,7 +180,6 @@ static void ConvertNv12ToRGB24(unsigned char *src0, unsigned char *src1, unsigne
             *d2++ = clp[384+((y2 + c1)>>16)];
             *d2++ = clp[384+((y2 - c2 - c3)>>16)];
             *d2++ = clp[384+((y2 + c4)>>16)];
-            cnt += 12;
         }
         d1 += 3*width;
         d2 += 3*width;
@@ -196,7 +194,6 @@ static void ConvertYuv420pToRGB24(unsigned char *src0, unsigned char *src1, unsi
     unsigned char *py1,*py2;
     int i,j, c1, c2, c3, c4;
     unsigned char *d1, *d2;
-    int cnt = 0;
     
     py1=src0;
     py2=py1+width;
@@ -230,7 +227,6 @@ static void ConvertYuv420pToRGB24(unsigned char *src0, unsigned char *src1, unsi
             *d2++ = clp[384+((y2 + c1)>>16)];
             *d2++ = clp[384+((y2 - c2 - c3)>>16)];
             *d2++ = clp[384+((y2 + c4)>>16)];
-            cnt += 12;
         }
         d1 += 3*width;
         d2 += 3*width;

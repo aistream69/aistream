@@ -506,7 +506,7 @@ extern "C" IHandle PreviewStart(int channel, char* params) {
         return preview;
     }
     strncpy(preview->type, type.get(), sizeof(preview->type));
-    if(!strncmp(preview->type, "0", sizeof(preview->type))) {
+    if(!strncmp(preview->type, "none", sizeof(preview->type))) {
         return preview;
     }
     if(!strncmp(preview->type, "hls", sizeof(preview->type)) || 
@@ -558,9 +558,11 @@ extern "C" int PreviewProcess(IHandle handle, TensorData* data) {
 extern "C" int PreviewStop(IHandle handle) {
     PreviewParams* preview = (PreviewParams* )handle;
     preview->running = 0;
-    preview->_running = 0;
-    if(pthread_join(preview->pid, NULL) != 0) {
-        AppError("pthread join failed, %s", strerror(errno));
+    if(preview->_running) {
+        preview->_running = 0;
+        if(pthread_join(preview->pid, NULL) != 0) {
+            AppError("pthread join failed, %s", strerror(errno));
+        }
     }
     std::unique_lock<std::mutex> lock(config.obj_mtx);
     auto obj_vec = config.obj_vec;

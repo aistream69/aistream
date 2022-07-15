@@ -14,6 +14,7 @@
  ***************************************************************************************/
 
 #include "stream.h"
+#include "cJSON.h"
 
 static auto GetLowestSlave(MasterParams* master) {
     std::shared_ptr<SlaveParam> slave = nullptr;
@@ -59,7 +60,6 @@ static bool AssignObjToSlave(auto obj, MasterParams* master) {
             AppWarn("slave:%s, get load from ack failed, %s", slave->ip, ack.buf.get());
         }
         obj->slave = slave;
-        obj->status = 1;
         AppDebug("assign obj %d to %s:%d", obj->id, slave->ip, slave->rest_port);
     }
     else {
@@ -84,6 +84,7 @@ static int HttpStart(auto obj, char* buf, const char* url, HttpAck* ack, MasterP
         obj->status = 0;
         return -1;
     }
+    obj->status = 1;
     snprintf(_url, sizeof(_url), "http://%s:%d%s", obj->slave->ip, obj->slave->rest_port, url);
     HttpPost(_url, buf, ack);
     return 0;
@@ -239,23 +240,38 @@ static int MDelObj(int id, MasterParams* master) {
 }
 
 void MObjParam::AddTask(char* params) {
-    auto _params = std::make_shared<std::string>(params);
+    std::string _params(params);
     m_task_mtx.lock();
     m_task_vec.push_back(_params);
     m_task_mtx.unlock();
 }
 
-void MObjParam::DelTask(char* name) {
+bool MObjParam::DelTask(char* name) {
+    bool find = false;
     m_task_mtx.lock();
     for(auto itr = m_task_vec.begin(); itr != m_task_vec.end(); ++itr) {
-        const char* _params = (*itr)->c_str();
+        const char* _params = (*itr).c_str();
         auto _name = GetStrValFromJson((char* )_params, "task");
         if(_name != nullptr && !strcmp(name, _name.get())) {
             m_task_vec.erase(itr);
+            find = true;
             break;
         }
     }
     m_task_mtx.unlock();
+    return find;
+}
+
+std::unique_ptr<char[]> MObjParam::GetTask(void) {
+    std::unique_ptr<char[]> params = nullptr;
+    m_task_mtx.lock();
+    if(m_task_vec.size() > 0) {
+        const char* _params = m_task_vec[0].c_str();
+        params = std::make_unique<char[]>(strlen(_params) + 1);
+        strcpy(params.get(), _params);
+    }
+    m_task_mtx.unlock();
+    return params;
 }
 
 static int SystemInitCB(char* buf, void* arg) {
@@ -377,6 +393,52 @@ static int ObjCB(char* buf, void* arg) {
     }
 
     return 0;
+}
+
+void request_gencb(struct evhttp_request* req, void* arg) {
+    char remote_ip[64] = {0};
+    const char* uri = evhttp_request_get_uri(req);
+
+    if(req->remote_host != NULL) {
+        strncpy(remote_ip, req->remote_host, sizeof(remote_ip));
+    }
+    if(evhttp_request_get_command(req) != EVHTTP_REQ_GET) {
+        printf("request_gencb failed, only support http get,%d, "
+                "url:%s, remote:%s\n", evhttp_request_get_command(req), uri, remote_ip);
+        evhttp_send_error(req, HTTP_BADREQUEST, 0);
+        return;
+    }
+    if(memcmp(uri, "/img", strlen("/img")) != 0) {
+        printf("http get failed, url:%s, remote:%s\n", uri, remote_ip);
+        evhttp_send_error(req, HTTP_BADREQUEST, 0);
+        return;
+    }
+    //printf("http general get : %s\n",  uri);
+
+    std::string filepath = uri;
+    evkeyvalq* outhead = evhttp_request_get_output_headers(req);
+    int pos = filepath.rfind('.');
+    std::string postfix = filepath.substr(pos + 1, filepath.size() - (pos + 1));
+    if(postfix == "jpg"||postfix == "gif"||postfix == "png") {
+        std::string tmp = "image/" + postfix;
+        evhttp_add_header(outhead, "Content-Type", tmp.c_str());
+    }
+
+    char buf[1024] = { 0 };
+    std::string img_path = "./data" + filepath;
+    FILE* fp = fopen(img_path.c_str(), "rb");
+    if(!fp) {
+        evhttp_send_reply(req, HTTP_NOTFOUND, "", 0);
+        return;
+    }
+    evbuffer* outbuf = evhttp_request_get_output_buffer(req);
+    for(;;) {
+        int len = fread(buf, 1, sizeof(buf), fp);
+        if (len <= 0)break;
+        evbuffer_add(outbuf, buf, len);
+    }
+    fclose(fp);
+    evhttp_send_reply(req, HTTP_OK, "", outbuf);
 }
 
 /**********************************************************
@@ -592,8 +654,8 @@ end:
   "data":{
     "task":"yolov3",
     "params":{
-        "preview": "hls"/"http-flv"/"0",
-        "record": "mp4"/"h264"/"0"
+        "preview": "hls"/"http-flv"/"none",
+        "record": "mp4"/"h264"/"none"
     }
   }
 } 
@@ -657,21 +719,248 @@ static void request_stop_task(struct evhttp_request* req, void* arg) {
     }
     obj = GetMObj(id, master);
     if(obj == nullptr) {
-        AppWarn("get obj %d failed", id);
+        snprintf(err_msg, sizeof(err_msg), "get obj %d failed", id);
         goto end;
     }
-    obj->DelTask(task.get());
+    if(!obj->DelTask(task.get())) {
+        snprintf(err_msg, sizeof(err_msg), "del task failed, id:%d, task:%s", id, task.get());
+        goto end;
+    }
     HttpStop(obj, buf, "/api/task/stop", &ack, master, 30);
     db->DBUpdate("obj", "id", id, "data.task", _data.get(), "$pull");
+    obj->status = 0;
 end:
     CheckErrMsg(err_msg, (char **)params->argb);
 }
 
 static void request_task_support(struct evhttp_request* req, void* arg) {
     request_first_stage;
+    CommonParams* params = (CommonParams* )arg;
+    char* url = (char *)params->arge;
+    char** ppbody = (char** )params->argb;
+    Restful* rest = (Restful* )params->argc;
+    MediaServer* media = rest->media;
+    MasterParams* master = media->GetMaster();
+
+    cJSON* root = cJSON_CreateObject();
+    cJSON* data_root =  cJSON_CreateObject();
+    cJSON* alg_root =  cJSON_CreateArray();
+    cJSON_AddStringToObject(root, "code", "0");
+    cJSON_AddStringToObject(root, "msg", "success");
+    cJSON_AddItemToObject(root, "data", data_root);
+    cJSON_AddItemToObject(data_root, "alg", alg_root);
+    //task support;
+    const char *flag = "/api/task/support?obj=";
+    char *obj = strstr(url, flag);
+    if(obj == NULL) {
+        goto end;
+    }
+    //obj = url + strlen(flag); //TODO:return task determined by obj type
+    for(size_t i = 0; i < master->cfg_task_vec.size(); i ++) {
+        cJSON *fld;
+        cJSON_AddItemToArray(alg_root, fld = cJSON_CreateObject());
+        cJSON_AddStringToObject(fld, "name", master->cfg_task_vec[i].c_str());
+        cJSON_AddNumberToObject(fld, "disabled", 0);
+    }
+end:
+    *ppbody = cJSON_Print(root);
+    cJSON_Delete(root);
+}
+
+static void request_admin_info(struct evhttp_request* req, void* arg) {
+    request_first_stage;
+    CommonParams* params = (CommonParams* )arg;
+    const char* msg = "{\"status\":1,\"data\":{\"user_name\":\"admin\",\"id\":12,\"create_time\":"
+        "\"2017-12-03 08:30\",\"status\":1,\"city\":\"nj\",\"avatar\":\"default.png\",\"admin\":\"\"}}";
+    SetAckMsg(msg, (char **)params->argb);
+}
+
+static void request_system_info(struct evhttp_request* req, void* arg) {
+    request_first_stage;
+    CommonParams* params = (CommonParams* )arg;
+    char** ppbody = (char** )params->argb;
+    Restful* rest = (Restful* )params->argc;
+    MediaServer* media = rest->media;
+    MasterParams* master = media->GetMaster();
+
+    // create system info json base
+    cJSON* root = cJSON_CreateObject();
+    cJSON* data_root =  cJSON_CreateObject();
+    cJSON* output_root =  cJSON_CreateObject();
+    cJSON* build_root =  cJSON_CreateObject();
+    cJSON_AddStringToObject(root, "code", "0");
+    cJSON_AddStringToObject(root, "msg", "success");
+    cJSON_AddItemToObject(root, "data", data_root);
+    cJSON_AddItemToObject(data_root, "build", build_root);
+    cJSON_AddItemToObject(data_root, "output", output_root);
+    // add build info
+    char tmp[256];
+    snprintf(tmp, sizeof(tmp), "%s %s", __TIME__, __DATE__);
+    cJSON_AddStringToObject(build_root, "version", SW_VERSION);
+    cJSON_AddStringToObject(build_root, "time", tmp);
+    // add output
+    if(master->output != nullptr) {
+        char* buf = master->output.get();
+        auto type = GetStrValFromJson(buf, "type");
+        auto host = GetStrValFromJson(buf, "data", "host");
+        int port = GetIntValFromJson(buf, "data", "port");
+        auto username = GetStrValFromJson(buf, "data", "username");
+        auto password = GetStrValFromJson(buf, "data", "password");
+        auto exchange = GetStrValFromJson(buf, "data", "exchange");
+        auto routingkey = GetStrValFromJson(buf, "data", "routingkey");
+        if(type != nullptr && host != nullptr && username != nullptr &&
+          password != nullptr && exchange != nullptr && routingkey != nullptr) {
+            cJSON_AddStringToObject(output_root, "type", type.get());
+            cJSON_AddStringToObject(output_root, "host", host.get());
+            cJSON_AddNumberToObject(output_root, "port", port);
+            cJSON_AddStringToObject(output_root, "username", username.get());
+            cJSON_AddStringToObject(output_root, "password", password.get());
+            cJSON_AddStringToObject(output_root, "exchange", exchange.get());
+            cJSON_AddStringToObject(output_root, "routingkey", routingkey.get());
+        }
+    }
+    // output json
+    *ppbody = cJSON_Print(root);
+    cJSON_Delete(root);
+}
+
+static void request_rtsp_status(struct evhttp_request* req, void* arg) {
+    request_first_stage;
+    CommonParams* params = (CommonParams* )arg;
+    char* url = (char *)params->arge;
+    char** ppbody = (char** )params->argb;
+    Restful* rest = (Restful* )params->argc;
+    MediaServer* media = rest->media;
+    MasterParams* master = media->GetMaster();
+    ConfigParams* config = media->GetConfig();
+
+    // parse http get params
+    int offset, limit;
+    int n = sscanf(url, "/api/obj/status/rtsp?offset=%d&limit=%d", &offset, &limit);
+    if(n != 2) {
+        return ;
+    }
+    // create ack json base
+    cJSON* root = cJSON_CreateObject();
+    cJSON* data_root =  cJSON_CreateObject();
+    cJSON* obj_root =  cJSON_CreateArray();
+    cJSON_AddStringToObject(root, "code", "0");
+    cJSON_AddStringToObject(root, "msg", "success");
+    cJSON_AddItemToObject(root, "data", data_root);
+    cJSON_AddItemToObject(data_root, "obj", obj_root);
+    // add request obj to json array
+    master->m_obj_mtx.lock();
+    cJSON_AddNumberToObject(data_root, "total", master->m_obj_vec.size());
+    for(size_t i = offset; (int)i < offset + limit && i < master->m_obj_vec.size(); i++) {
+        cJSON *fld;
+        char alg_name[64] = "none";
+        char preview[64] = "none";
+        auto obj = master->m_obj_vec[i];
+        char* params = obj->params.get();
+        auto type = GetStrValFromJson(params, "type");
+        if(type != nullptr && strcmp(type.get(), "rtsp") != 0) {
+            continue;
+        }
+        auto name = GetStrValFromJson(params, "name");
+        if(name == nullptr) {
+            name = std::make_unique<char[]>(32);
+            strcpy(name.get(), "");
+        }
+        auto url = GetStrValFromJson(params, "data", "url");
+        int tcp_enable = GetIntValFromJson(params, "data", "tcp_enable");
+        if(url == nullptr || tcp_enable < 0) {
+            continue;
+        }
+        auto task_params = obj->GetTask();
+        if(task_params != nullptr) {
+            auto task_name = GetStrValFromJson(task_params.get(), "task");
+            if(task_name != nullptr) {
+                strncpy(alg_name, task_name.get(), sizeof(alg_name));
+            }
+            auto preview_name = GetStrValFromJson(task_params.get(), "params", "preview");
+            if(preview_name != nullptr) {
+                strncpy(preview, preview_name.get(), sizeof(preview));
+            }
+        }
+        cJSON_AddItemToArray(obj_root, fld = cJSON_CreateObject());
+        cJSON_AddStringToObject(fld, "name", name.get());
+        cJSON_AddNumberToObject(fld, "id", obj->id);
+        cJSON_AddStringToObject(fld, "url", url.get());
+        cJSON_AddNumberToObject(fld, "tcp_enable", tcp_enable);
+        cJSON_AddStringToObject(fld, "alg", alg_name);
+        cJSON_AddStringToObject(fld, "preview", preview);
+        cJSON_AddNumberToObject(fld, "status", obj->status);
+        // preview url
+        const char *ip = "null";
+        if(obj->slave != nullptr) {
+            if(strlen(obj->slave->internet_ip) > 0) {
+                ip = obj->slave->internet_ip;
+            }
+            else {
+                ip = obj->slave->ip;
+            }
+        }
+        char _url[256];
+        if(!strncmp(preview, "http-flv", sizeof(preview))) {
+            snprintf(_url, sizeof(_url), "http://%s:%d/live?port=1935&app=myapp&stream=stream%d",
+                                  ip, config->nginx.http_port, obj->id);
+        }
+        else {
+            snprintf(_url, sizeof(_url), "http://%s:%d/m3u8/stream%d/play.m3u8", 
+                                  ip, config->nginx.http_port, obj->id);
+        }
+        cJSON_AddStringToObject(fld, "previewUrl", _url);
+    }
+    master->m_obj_mtx.unlock();
+    // output json
+    *ppbody = cJSON_Print(root);
+    cJSON_Delete(root);
+}
+
+static void request_slave_status(struct evhttp_request* req, void* arg) {
+    request_first_stage;
+    CommonParams* params = (CommonParams* )arg;
+    char** ppbody = (char** )params->argb;
+    Restful* rest = (Restful* )params->argc;
+    MediaServer* media = rest->media;
+    MasterParams* master = media->GetMaster();
+
+    // create ack json base
+    cJSON* root = cJSON_CreateObject();
+    cJSON* data_root =  cJSON_CreateObject();
+    cJSON* slave_root =  cJSON_CreateArray();
+    cJSON_AddStringToObject(root, "code", "0");
+    cJSON_AddStringToObject(root, "msg", "success");
+    cJSON_AddItemToObject(root, "data", data_root);
+    cJSON_AddItemToObject(data_root, "slave", slave_root);
+    // add slave to json array
+    master->m_slave_mtx.lock();
+    cJSON_AddNumberToObject(data_root, "total", master->m_slave_vec.size());
+    for(size_t i = 0; i < master->m_slave_vec.size(); i++) {
+        cJSON *fld;
+        auto slave = master->m_slave_vec[i];
+        auto name = GetStrValFromJson(slave->params.get(), "name");
+        if(name == nullptr) {
+            name = std::make_unique<char[]>(32);
+            strcpy(name.get(), "");
+        }
+        cJSON_AddItemToArray(slave_root, fld = cJSON_CreateObject());
+        cJSON_AddStringToObject(fld, "name", name.get());
+        cJSON_AddStringToObject(fld, "ip", slave->ip);
+        cJSON_AddNumberToObject(fld, "port", slave->rest_port);
+        cJSON_AddStringToObject(fld, "internet_ip", slave->internet_ip);
+        cJSON_AddNumberToObject(fld, "status", slave->alive);
+        cJSON_AddNumberToObject(fld, "load", slave->load.total_load);
+        cJSON_AddNumberToObject(fld, "objNum", slave->obj_id_vec.size());
+    }
+    master->m_slave_mtx.unlock();
+    // output json
+    *ppbody = cJSON_Print(root);
+    cJSON_Delete(root);
 }
 
 static UrlMap rest_url_map[] = {
+    // HTTP POST
     {"/api/system/login",       request_login},
     {"/api/system/logout",      request_logout},
     {"/api/system/init",        request_system_init},
@@ -682,7 +971,12 @@ static UrlMap rest_url_map[] = {
     {"/api/obj/del",            request_del_obj},
     {"/api/task/start",         request_start_task},
     {"/api/task/stop",          request_stop_task},
+    // HTTP GET
     {"/api/task/support",       request_task_support},
+    {"/api/admin/info",         request_admin_info},
+    {"/api/system/get/info",    request_system_info},
+    {"/api/obj/status/rtsp",    request_rtsp_status},
+    {"/api/system/slave/status",request_slave_status},
     {NULL, NULL}
 };
 
@@ -700,9 +994,34 @@ const char* MasterRestful::GetType(void) {
     return "master";
 }
 
+static void ReadCfg(MasterParams* master) {
+    int size = 0;
+    const char *filename = "cfg/task.json";
+    auto buf = GetArrayBufFromFile(filename, size, "tasks");
+    if(buf == nullptr) {
+        AppWarn("read %s failed", filename);
+        return;
+    }
+    for(int i = 0; i < size; i ++) {
+        auto arrbuf = GetBufFromArray(buf.get(), i);
+        if(arrbuf == nullptr) {
+            break;
+        }
+        auto name = GetStrValFromJson(arrbuf.get(), "name");
+        auto config = GetStrValFromJson(arrbuf.get(), "config");
+        if(name == nullptr || config == nullptr) {
+            AppWarn("read name or config failed, %s", filename);
+            break;
+        }
+        std::string _name(name.get());
+        master->cfg_task_vec.push_back(_name);
+    }
+}
+
 MasterParams::MasterParams(MediaServer* _media)
   : media(_media) {
     output = nullptr;
+    ReadCfg(this);
 }
 
 MasterParams::~MasterParams(void) {
@@ -790,7 +1109,7 @@ static void UpdateObjTask(auto obj, MasterParams* master) {
     obj->m_task_mtx.lock();
     for(size_t i = 0; i < obj->m_task_vec.size(); i++) {
         auto task = obj->m_task_vec[i];
-        snprintf(buf, sizeof(buf), "{\"id\":%d,\"data\":%s}", obj->id, task->c_str());
+        snprintf(buf, sizeof(buf), "{\"id\":%d,\"data\":%s}", obj->id, task.c_str());
         HttpStart(obj, buf, "/api/task/start", &ack, master);
     }
     obj->m_task_mtx.unlock();

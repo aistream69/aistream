@@ -25,6 +25,8 @@
 #include <sys/time.h>
 #include <pthread.h>
 
+#define SERVER_NAME                     "aistream"
+#define DEBUG_STOP                      "aistream.stop"
 #define DEBUG_LOG_FILE                  "log/aistream.log"
 #define DEBUG_LOG_BAK_FILE              "log/aistream.log.bak"
 #define LOG_SIZE_MAX                    (1024*1024*20)
