@@ -35,6 +35,7 @@ typedef struct {
     int input_h;
     unsigned char* rgb_buf;
     std::vector<cv::Rect2f> priors;
+    std::vector<DetectionResult> result;
 } DetectionParams;
 
 typedef struct {
@@ -43,6 +44,7 @@ typedef struct {
     float score_threshold;
     float nms_threshold;
     int top_k;
+    int skip;
 } FaceEngine;
 
 static FaceEngine* engine = NULL;
@@ -204,9 +206,7 @@ static void GeneratePriors(DetectionParams* detection) {
     }
 }
 
-static int get_detections(cv::Mat faces, int w, int h, auto& output) {
-    int n = 0;
-    DetectionResult* result = (DetectionResult* )output.get();
+static int get_detections(cv::Mat faces, int w, int h, auto& result) {
     for (int i = 0; i < faces.rows; i++) {
         float left = faces.at<float>(i, 0);
         float top = faces.at<float>(i, 1);
@@ -224,15 +224,16 @@ static int get_detections(cv::Mat faces, int w, int h, auto& output) {
         if(width > w*1/2 || height > h*1/2 || width*height < 20) {
             continue;
         }
-        result[n].left = left;
-        result[n].top = top;
-        result[n].width = width;
-        result[n].height = height;
-        result[n].score = score;
-        result[n].classid = 81; // coco:face
-        n ++;
+        DetectionResult det;
+        det.left = left;
+        det.top = top;
+        det.width = width;
+        det.height = height;
+        det.score = score;
+        det.classid = 81; // coco:face
+        result.push_back(det);
     }
-    return n;
+    return 0;
 }
 
 extern "C" int DetectionInit(ElementData* data, char* params) {
@@ -255,6 +256,10 @@ extern "C" int DetectionInit(ElementData* data, char* params) {
         AppWarn("create engine failed, params exception");
         return -1;
     }
+    int skip = GetIntValFromJson(params, "skip");
+    if(skip <= 0) {
+        skip = 1;
+    }
 
     cv::dnn::Net net = cv::dnn::readNet(model.get(), "");
     if(net.empty()) {
@@ -268,7 +273,9 @@ extern "C" int DetectionInit(ElementData* data, char* params) {
     engine->score_threshold = score_threshold;
     engine->nms_threshold = nms_threshold;
     engine->top_k = top_k;
+    engine->skip = skip;
     RGBInit();
+    AppDebug("detection skip: %d", skip);
 
     return 0;
 }
@@ -294,11 +301,7 @@ extern "C" int DetectionProcess(IHandle handle, TensorData* data) {
         detection->init = true;
         GeneratePriors(detection);
     }
-
-    HeadParams params = {0};
-    // debug version for osd
-    int skip = 50;
-    if(pkt->_params.frame_id % skip == 0) {
+    if(pkt->_params.frame_id % engine->skip == 0) {
         // PreProcess
         unsigned char* y = (unsigned char*)pkt->_params.ptr;
         unsigned char* u = y + w*h;
@@ -316,25 +319,26 @@ extern "C" int DetectionProcess(IHandle handle, TensorData* data) {
         cv::Mat results = postProcess(output_blobs, detection);
         results.convertTo(faces, CV_32FC1);
         // Copy to out
-        auto output = std::make_unique<char[]>(sizeof(DetectionResult)*faces.rows);
-        int n = get_detections(faces, w, h, output);
-        size_t size= sizeof(DetectionResult)*n;
-        if(size > 0) {
-            char* ptr = new char[size];
-            DetectionResult* dets = (DetectionResult* )ptr;
-            DetectionResult* result = (DetectionResult* )output.get();
-            for(int i = 0; i < n; i ++) {
-                DetectionResult* det = dets + i;
-                det->left = result[i].left;
-                det->top = result[i].top;
-                det->width = result[i].width;
-                det->height = result[i].height;
-                det->score = result[i].score;
-                det->classid = result[i].classid;
-            }
-            params.ptr = ptr;
-            params.ptr_size = size;
+        detection->result.clear();
+        get_detections(faces, w, h, detection->result);
+    }
+
+    HeadParams params = {0};
+    size_t size= sizeof(DetectionResult)*detection->result.size();
+    if(size > 0) {
+        char* ptr = new char[size];
+        DetectionResult* dets = (DetectionResult* )ptr;
+        for(size_t i = 0; i < detection->result.size(); i ++) {
+            DetectionResult* det = dets + i;
+            det->left = detection->result[i].left;
+            det->top = detection->result[i].top;
+            det->width = detection->result[i].width;
+            det->height = detection->result[i].height;
+            det->score = detection->result[i].score;
+            det->classid = detection->result[i].classid;
         }
+        params.ptr = ptr;
+        params.ptr_size = size;
     }
     params.type = pkt->_params.type;
     params.frame_id = pkt->_params.frame_id;

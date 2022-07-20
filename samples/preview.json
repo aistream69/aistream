@@ -1,0 +1,38 @@
+{
+    "batch_size": 1,
+    "pipeline": [
+        {
+            "name": "object",
+            "path": "cfg/object.json",
+            "input_map": [
+                {
+                    "key": "input",
+                    "val": "entry"
+                }
+            ],
+            "output_map": [
+                {
+                    "key": "output",
+                    "val": "frame"
+                }
+            ]
+        },
+        {
+            "name": "preview",
+            "path": "./plugins/official/libpreview.so",
+            "input_map": [
+                {
+                    "key": "preview_input",
+                    "val": "frame"
+                }
+            ],
+            "output_map": [
+                {
+                    "key": "preview_output",
+                    "val": "null"
+                }
+            ]
+        }
+    ]
+}
+

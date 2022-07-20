@@ -9,8 +9,8 @@
       "config": "./samples/face_osd.json"
     },
     {
-      "name": "debug",
-      "config": "./samples/debug.json"
+      "name": "preview",
+      "config": "./samples/preview.json"
     }
   ]
 }

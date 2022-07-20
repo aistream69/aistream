@@ -33,6 +33,8 @@ extern "C" {
 #include "common.h"
 #include "log.h"
 
+typedef void (*SetRectangle)(Packet* output);
+
 typedef struct {
     int init;
     AVCodec* codec;
@@ -46,6 +48,7 @@ typedef struct {
 typedef struct {
     int id;
     EncodeParams encoder;
+    SetRectangle set_rect;
 } OSDParams;
 
 typedef struct {
@@ -56,7 +59,7 @@ typedef struct {
 } OSDConfig;
 
 static OSDConfig config = {0};
-static void SetRectangle(auto pkt) {
+static void Nv12SetRectangle(Packet* pkt) {
     int img_w = pkt->_params.width;
     int img_h = pkt->_params.height;
     uint8_t* _y = (uint8_t* )pkt->_data;
@@ -103,6 +106,58 @@ static void SetRectangle(auto pkt) {
             _uv[start_x + 1] = color_v;
             _uv[end_x] = color_u;
             _uv[end_x + 1] = color_v;
+        }
+    }
+}
+
+static void Yuv420pSetRectangle(Packet* pkt) {
+    int img_w = pkt->_params.width;
+    int img_h = pkt->_params.height;
+    uint8_t* _y = (uint8_t* )pkt->_data;
+    uint8_t* _u = _y + img_w*img_h;
+    uint8_t* _v = _u + img_w*img_h/4;
+    DetectionResult* dets = (DetectionResult* )pkt->_params.ptr;
+    int num = pkt->_params.ptr_size/sizeof(DetectionResult);
+    uint8_t color_y = config.yuv[0], color_u = config.yuv[1], color_v = config.yuv[2];
+
+    for(int n = 0; n < num; n ++) {
+        DetectionResult* det = dets + n;
+        int x = ((int)det->left)/2*2;
+        int y = ((int)det->top)/2*2;
+        int w = ((int)det->width)/2*2;
+        int h = ((int)det->height)/2*2;
+        // y
+        for(int i = y; i < y + h; i ++) {
+            int start_x = img_w*i + x;
+            int end_x = start_x + w;
+            // x axis line
+            if(i == y || i == y+1 || i == y+h-1 || i == y+h-2) {
+                memset(_y + start_x, color_y, w);
+            }
+            // y axis line
+            _y[start_x] = color_y;
+            _y[start_x + 1] = color_y;
+            _y[end_x] = color_y;
+            _y[end_x + 1] = color_y;
+        }
+        // uv
+        int yy = y/2;
+        int hh = (y + h)/2;
+        for(int i = yy; i < hh; i ++) {
+            int start_x = (img_w*i + x)/2;
+            int end_x = start_x + w/2;
+            // x axis line
+            if(i == yy || i == hh - 1) {
+                for(int j = 0; j < w/2; j++) {
+                    _u[start_x + j] = color_u;
+                    _v[start_x + j] = color_v;
+                }
+            }
+            // y axis line
+            _u[start_x] = color_u;
+            _u[end_x] = color_u;
+            _v[start_x] = color_v;
+            _v[end_x] = color_v;
         }
     }
 }
@@ -188,6 +243,16 @@ static int CreateEncoder(auto pkt, OSDParams* osd) {
     }
     else {
         encoder.ctx->pix_fmt = (AVPixelFormat)pkt->_params.type;
+    }
+    if(encoder.ctx->pix_fmt == AV_PIX_FMT_YUV420P) {
+        osd->set_rect = Yuv420pSetRectangle;
+    }
+    else if(encoder.ctx->pix_fmt == AV_PIX_FMT_NV12) {
+        osd->set_rect = Nv12SetRectangle;
+    }
+    else {
+        AppWarn("unsupport pix format : %d", encoder.ctx->pix_fmt);
+        osd->set_rect = Nv12SetRectangle;
     }
 
     if(encoder.codec->id == AV_CODEC_ID_H264) {
@@ -326,21 +391,13 @@ extern "C" IHandle OSDStart(int channel, char* params) {
 
 extern "C" int OSDProcess(IHandle handle, TensorData* data) {
     OSDParams* osd = (OSDParams* )handle;
-    auto pkt = data->tensor_buf.input[0];
-
-    SetRectangle(pkt);
+    Packet* pkt = data->tensor_buf.input[0];
     if(!osd->encoder.init) {
         CreateEncoder(pkt, osd);
         osd->encoder.init = 1;
     }
+    osd->set_rect(pkt);
     Encoding(pkt, osd, data);
-    //struct timeval tv1, tv2;
-    //gettimeofday(&tv1, NULL);
-    //gettimeofday(&tv2, NULL);
-    //float cost_ms = (tv2.tv_sec - tv1.tv_sec)*1000.0 + (tv2.tv_usec - tv1.tv_usec)/1000.0;
-    //printf("id:%d, frameid:%d, w:%d,h:%d, size:%ld, cost:%fms\n", osd->id, 
-    //    pkt->_params.frame_id, pkt->_params.width, pkt->_params.height, pkt->_size, cost_ms);
-
     return 0;
 }
 

@@ -15,7 +15,6 @@
     },
     "system": {
         "obj_max": 10000,
-        "localhost": "124.222.53.156",
         "nginx_path": "/usr/local/nginx",
         "db": {
             "type": "mongodb",
