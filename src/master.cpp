@@ -611,6 +611,51 @@ end:
 /**********************************************************
 {
   "id":99,
+  "data":{
+    "url":"rtmp://127.0.0.1:1935/myapp/stream99"
+  }
+} 
+**********************************************************/
+static void request_add_rtmp(struct evhttp_request* req, void* arg) {
+    request_first_stage;
+    char err_msg[128] = {0};
+    CommonParams* params = (CommonParams* )arg;
+    char* buf = (char* )params->arga;
+    Restful* rest = (Restful* )params->argc;
+    MediaServer* media = rest->media;
+    DbParams* db = media->GetDB();
+    MasterParams* master = media->GetMaster();
+
+    int id;
+    std::shared_ptr<MObjParam> obj;
+    auto _buf = AddStrJson(buf, "rtmp", "type");
+    if(_buf == nullptr) {
+        snprintf(err_msg, sizeof(err_msg), "parse json failed");
+        goto end;
+    }
+    buf = _buf.get();
+    id = GetIntValFromJson(buf, "id");
+    if(id <= 0) {
+        snprintf(err_msg, sizeof(err_msg), "get id failed");
+        goto end;
+    }
+    obj = GetMObj(id, master);
+    if(obj != nullptr) {
+        snprintf(err_msg, sizeof(err_msg), "obj %d exist", id);
+        goto end;
+    }
+    if(MAddObj(buf, master) == nullptr) {
+        snprintf(err_msg, sizeof(err_msg), "add obj failed");
+        goto end;
+    }
+    db->DBUpdate("obj", buf, "id", id);
+end:
+    CheckErrMsg(err_msg, (char **)params->argb);
+}
+
+/**********************************************************
+{
+  "id":99,
 } 
 **********************************************************/
 static void request_del_obj(struct evhttp_request* req, void* arg) {
@@ -824,7 +869,7 @@ static void request_system_info(struct evhttp_request* req, void* arg) {
     cJSON_Delete(root);
 }
 
-static void request_rtsp_status(struct evhttp_request* req, void* arg) {
+static void request_obj_status(struct evhttp_request* req, void* arg) {
     request_first_stage;
     CommonParams* params = (CommonParams* )arg;
     char* url = (char *)params->arge;
@@ -835,10 +880,15 @@ static void request_rtsp_status(struct evhttp_request* req, void* arg) {
     ConfigParams* config = media->GetConfig();
 
     // parse http get params
+    char _type[128];
     int offset, limit;
-    int n = sscanf(url, "/api/obj/status/rtsp?offset=%d&limit=%d", &offset, &limit);
-    if(n != 2) {
-        return ;
+    if(strlen(url) - strlen("/api/obj/status?type=&offset=&limit=") > sizeof(_type)) {
+        AppWarn("stack overflow danger! url:%s", url);
+        return;
+    }
+    int n = sscanf(url, "/api/obj/status?type=%[^&]&offset=%d&limit=%d", _type, &offset, &limit);
+    if(n != 3) {
+        return;
     }
     // create ack json base
     cJSON* root = cJSON_CreateObject();
@@ -858,7 +908,10 @@ static void request_rtsp_status(struct evhttp_request* req, void* arg) {
         auto obj = master->m_obj_vec[i];
         char* params = obj->params.get();
         auto type = GetStrValFromJson(params, "type");
-        if(type != nullptr && strcmp(type.get(), "rtsp") != 0) {
+        if(type == nullptr) {
+            continue;
+        }
+        if(strcmp(_type, "all") != 0 && strcmp(type.get(), _type) != 0) {
             continue;
         }
         auto name = GetStrValFromJson(params, "name");
@@ -867,8 +920,7 @@ static void request_rtsp_status(struct evhttp_request* req, void* arg) {
             strcpy(name.get(), "");
         }
         auto url = GetStrValFromJson(params, "data", "url");
-        int tcp_enable = GetIntValFromJson(params, "data", "tcp_enable");
-        if(url == nullptr || tcp_enable < 0) {
+        if(url == nullptr) {
             continue;
         }
         auto task_params = obj->GetTask();
@@ -886,10 +938,16 @@ static void request_rtsp_status(struct evhttp_request* req, void* arg) {
         cJSON_AddStringToObject(fld, "name", name.get());
         cJSON_AddNumberToObject(fld, "id", obj->id);
         cJSON_AddStringToObject(fld, "url", url.get());
-        cJSON_AddNumberToObject(fld, "tcp_enable", tcp_enable);
         cJSON_AddStringToObject(fld, "alg", alg_name);
         cJSON_AddStringToObject(fld, "preview", preview);
         cJSON_AddNumberToObject(fld, "status", obj->status);
+        if(!strcmp(_type, "rtsp")) {
+            int tcp_enable = GetIntValFromJson(params, "data", "tcp_enable");
+            if(tcp_enable < 0) {
+                tcp_enable = 0;
+            }
+            cJSON_AddNumberToObject(fld, "tcp_enable", tcp_enable);
+        }
         // preview url
         const char *ip = "null";
         if(obj->slave != nullptr) {
@@ -968,14 +1026,15 @@ static UrlMap rest_url_map[] = {
     {"/api/system/slave/add",   request_add_slave},
     {"/api/system/slave/del",   request_del_slave},
     {"/api/obj/add/rtsp",       request_add_rtsp},
-    {"/api/obj/del",            request_del_obj},
+    {"/api/obj/add/rtmp",       request_add_rtmp},
     {"/api/task/start",         request_start_task},
     {"/api/task/stop",          request_stop_task},
+    {"/api/obj/del",            request_del_obj},
     // HTTP GET
     {"/api/task/support",       request_task_support},
     {"/api/admin/info",         request_admin_info},
     {"/api/system/get/info",    request_system_info},
-    {"/api/obj/status/rtsp",    request_rtsp_status},
+    {"/api/obj/status",         request_obj_status},
     {"/api/system/slave/status",request_slave_status},
     {NULL, NULL}
 };
