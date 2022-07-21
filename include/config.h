@@ -20,7 +20,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define URL_LEN 256
+#define URL_LEN 512
 #define CONFIG_FILE     "cfg/config.json"
 
 typedef struct {

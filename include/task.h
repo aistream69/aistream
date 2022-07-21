@@ -46,7 +46,7 @@ public:
     // or element is multi used
     std::vector<std::shared_ptr<TaskElement>> t_ele_vec;
     void Start(std::shared_ptr<TaskParams> _task);
-    void Stop(void);
+    void Stop(bool sync = false);
 private:
     std::thread* t;
     void ThreadFunc(void);

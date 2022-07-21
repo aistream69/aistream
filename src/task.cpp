@@ -62,17 +62,14 @@ int TaskParams::Start(void) {
 }
 
 int TaskParams::Stop(bool sync) {
-    if(!running || !sync) {
-        running = 0;
-        return 0;
-    }
-
     running = 0;
     for(size_t i = 0; i < thread_vec.size(); i ++) {
         auto tt = thread_vec[i];
-        tt->Stop();
+        tt->Stop(sync);
     }
-    thread_vec.clear();
+    if(sync) {
+        thread_vec.clear();
+    }
 
     return 0;
 }
@@ -341,7 +338,7 @@ void TaskThread::Start(std::shared_ptr<TaskParams> _task) {
     t = new std::thread(&TaskThread::ThreadFunc, shared_from_this());
 }
 
-void TaskThread::Stop(void) {
+void TaskThread::Stop(bool sync) {
     for(size_t i = 0; i < t_ele_vec.size(); i ++) {
         auto ele = t_ele_vec[i];
         for(size_t j = 0; j < ele->data.output.size(); j ++) {
@@ -351,7 +348,7 @@ void TaskThread::Stop(void) {
         }
         ele->framework->Notify();
     }
-    if(t != nullptr) {
+    if(sync && t != nullptr) {
         if(t->joinable()) {
             t->join();
         }

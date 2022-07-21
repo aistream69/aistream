@@ -634,7 +634,7 @@ static int GetNginxPort(char* nginx_config_path, int& port) {
 }
 
 static int GetNginxRoot(char* nginx_config_path, char* workdir) {
-    char buf[256];
+    char buf[URL_LEN];
     FILE* fp = fopen(nginx_config_path, "rb");
     if(fp == NULL) {
         AppWarn("fopen %s failed", nginx_config_path);
