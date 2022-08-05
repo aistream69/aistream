@@ -23,7 +23,7 @@ add_library(tracker SHARED
     bytetrack/src/utils.cpp
     )
 
-add_dependencies(tracker opencv eigen)
+add_dependencies(tracker opencv eigen cjson)
 
 target_link_libraries(tracker
     -lopencv_highgui

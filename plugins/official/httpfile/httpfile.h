@@ -13,8 +13,8 @@
  *
  ***************************************************************************************/
 
-#ifndef __AISTREAM_RTMP_H__
-#define __AISTREAM_RTMP_H__
+#ifndef __AISTREAM_HTTPFILE_H__
+#define __AISTREAM_HTTPFILE_H__
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -23,14 +23,14 @@
 #include "share.h"
 #include "log.h"
 
-class Rtmp : public Object {
+class HttpFile : public Object {
 public:
-    Rtmp(MediaServer* _media):Object(_media) {
+    HttpFile(MediaServer* _media):Object(_media) {
         memset(lib, 0, sizeof(lib));
     }
-    ~Rtmp(void) {}
+    ~HttpFile(void) {}
     virtual char* GetPath(char* path) {
-        auto name = GetStrValFromFile(path, "rtmp", "lib");
+        auto name = GetStrValFromFile(path, "httpfile", "lib");
         if(name == nullptr) {
             AppWarn("get path failed, %s", path);
             return lib;

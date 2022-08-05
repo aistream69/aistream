@@ -5,8 +5,8 @@
     "rtmp": {
         "lib": "plugins/official/librtmp.so"
     },
-    "gb28181": {
-        "lib": "todo"
+    "httpfile": {
+        "lib": "plugins/official/libhttpfile.so"
     },
     "gat1400": {
         "lib": "todo"

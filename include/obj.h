@@ -61,6 +61,7 @@ public:
     MediaServer* media;
 private:
     void ObjManager(void);
+    void StartHttpfileTask(void);
     std::mutex obj_mtx;
     std::vector<std::shared_ptr<Object>> obj_vec;
 };

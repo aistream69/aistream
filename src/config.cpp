@@ -35,6 +35,10 @@ bool ConfigParams::Read(const char *cfg) {
     master_rest_port = GetIntValFromJson(ptr, "master", "rest_port");
     slave_rest_port = GetIntValFromJson(ptr, "slave", "rest_port");
     obj_max = GetIntValFromJson(ptr, "system", "obj_max");
+    task_timeout_sec = GetIntValFromJson(ptr, "system", "task_timeout_sec");
+    if(task_timeout_sec < 0) {
+        task_timeout_sec = 180;
+    }
     auto localhost = GetStrValFromJson(ptr, "system", "localhost");
     if(localhost != nullptr) {
         strncpy(local_ip, localhost.get(), sizeof(local_ip));

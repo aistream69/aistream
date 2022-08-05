@@ -168,26 +168,6 @@ static void request_add_gat1400(struct evhttp_request* req, void* arg) {
     obj_params->Put2ObjQue(obj);
 }
 
-static void request_add_file(struct evhttp_request* req, void* arg) {
-    request_first_stage;
-}
-
-/**********************************************************
-http/ws:
-{
-  "id":99,
-  "data":{
-    "port":8098,
-    "token":"xxxxxx"
-  }
-} 
-Note:
- -- "token" also can be from login, the difference is who generate it
-**********************************************************/
-static void request_add_http(struct evhttp_request* req, void* arg) {
-    request_first_stage;
-}
-
 static void request_add_ws(struct evhttp_request* req, void* arg) {
     request_first_stage;
 }
@@ -335,8 +315,6 @@ static UrlMap rest_url_map[] = {
     {"/api/obj/add/rtmp",       request_add_rtmp},
     {"/api/obj/add/gb28181",    request_add_gb28181},
     {"/api/obj/add/gat1400",    request_add_gat1400},
-    {"/api/obj/add/file",       request_add_file},
-    {"/api/obj/add/http",       request_add_http},
     {"/api/obj/add/ws",         request_add_ws},
     {"/api/obj/del",            request_del_obj},
     {"/api/task/start",         request_start_task},

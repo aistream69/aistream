@@ -32,6 +32,12 @@ typedef struct {
     float total_load;
 } SlaveLoad;
 
+typedef struct {
+    char name[64];
+    char input[32];
+    int http_file_port;
+} TaskCfg;
+
 class SlaveParam : public std::enable_shared_from_this<SlaveParam> {
 public:
     SlaveParam(void) {
@@ -86,7 +92,9 @@ public:
     std::mutex m_obj_mtx;
     std::vector<std::shared_ptr<MObjParam>> m_obj_vec;
     std::unique_ptr<char[]> output;
-    std::vector<std::string> cfg_task_vec;
+    std::vector<TaskCfg> cfg_task_vec;
+    char user[256];
+    char password[256];
     MediaServer* media;
 };
 

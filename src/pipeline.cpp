@@ -112,7 +112,7 @@ static bool ParseElement(char* ptr, const char* alg_name, auto alg) {
     return true;
 }
 
-static void AddAlgSupport(char* ptr, const char* name, const char* config, auto alg, Pipeline* pipe) {
+static void AddTaskSupport(char* ptr, const char* name, const char* config, auto alg, Pipeline* pipe) {
     int batch_size = GetIntValFromJson(ptr, "batch_size");
     if(batch_size <= 0) {
         batch_size = 1;
@@ -121,7 +121,7 @@ static void AddAlgSupport(char* ptr, const char* name, const char* config, auto 
     alg->SetConfig(config);
     alg->SetBatchSize(batch_size);
     pipe->Put2AlgQue(alg);
-    AppDebug("add alg support:%s,total:%ld", name, pipe->GetAlgNum());
+    AppDebug("task:%s, total:%ld", name, pipe->GetAlgNum());
 }
 
 static void UpdateTaskByConfig(auto config_map, Pipeline* pipe) {
@@ -142,7 +142,7 @@ static void UpdateTaskByConfig(auto config_map, Pipeline* pipe) {
         if(ParseElement(ptr, name, alg) != true) {
             continue;
         }
-        AddAlgSupport(ptr, name, config, alg, pipe);
+        AddTaskSupport(ptr, name, config, alg, pipe);
     }
     // check and del
     pipe->CheckIfDelAlg(config_map);

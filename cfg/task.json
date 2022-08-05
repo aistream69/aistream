@@ -2,15 +2,23 @@
   "tasks": [
     {
       "name": "face_capture",
+      "input": "video",
       "config": "./samples/face_detection.json"
     },
     {
       "name": "face_osd",
+      "input": "video",
       "config": "./samples/face_osd.json"
     },
     {
       "name": "preview",
+      "input": "video",
       "config": "./samples/preview.json"
+    },
+    {
+      "name": "resnet50",
+      "input": "img",
+      "config": "./samples/resnet50.json"
     }
   ]
 }

@@ -13,8 +13,13 @@
         "rgb_queue_len": 10,
         "rgb_skip": 5
     },
+    "img": {
+        "queue_len": 50,
+        "save_days": 7
+    },
     "system": {
         "obj_max": 10000,
+        "task_timeout_sec": 180,
         "nginx_path": "/usr/local/nginx",
         "db": {
             "type": "mongodb",
@@ -22,6 +27,17 @@
             "port": 27017,
             "user": "admin",
             "password": "123456"
-        }
+        },
+        "client": {
+            "user": "admin",
+            "password": "123456"
+        },
+        "httpfile": [
+            {
+                "task": "resnet50",
+                "port" : 11606,
+                "threads": 10
+            }
+        ]
     }
 }

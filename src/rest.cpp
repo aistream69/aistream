@@ -17,7 +17,7 @@
 #include "rest.h"
 #include <thread>
 
-static int SendHttpReply(struct evhttp_request* req, int code, char* buf) {
+int SendHttpReply(struct evhttp_request* req, int code, const char* buf) {
     struct evbuffer* evb;
     evb = evbuffer_new();
     if(buf != NULL) {
@@ -226,7 +226,7 @@ int request_cb(struct evhttp_request* req, void (*http_task)(struct evhttp_reque
     while (evbuffer_get_length(buf)) {
         int n = evbuffer_remove(buf, cbuf, POST_BUF_MAX);
         if (n >= POST_BUF_MAX) {
-            AppWarn("content length is too large, %d", n);
+            printf("content length is too large, %d\n", n);
             cbuf[POST_BUF_MAX - 1] = 0;
         }
     }
@@ -302,7 +302,7 @@ static int HttpTask(UrlMap* url_map, int port, void* arg) {
             break;
         }
     }
-    evhttp_set_gencb(http, request_gencb, NULL);
+    evhttp_set_gencb(http, request_gencb, arg);
 
     /* Now we tell the evhttp what port to listen on */
     handle = evhttp_bind_socket_with_handle(http, "0.0.0.0", port);

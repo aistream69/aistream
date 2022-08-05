@@ -77,12 +77,13 @@ typedef struct {
 } HeadParams;
 
 typedef struct {
+    int type;
     char* buf;
     int size;
-    int type;
     int width;
     int height;
     int frame_id;
+    char *extra;
 } FrameParam;
 
 typedef struct {

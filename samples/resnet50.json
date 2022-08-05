@@ -1,0 +1,61 @@
+{
+    "batch_size": 1,
+    "pipeline": [
+        {
+            "name": "object",
+            "path": "cfg/object.json",
+            "input_map": [
+                {
+                    "key": "input",
+                    "val": "entry"
+                }
+            ],
+            "output_map": [
+                {
+                    "key": "output",
+                    "val": "frame"
+                }
+            ]
+        },
+        {
+            "name": "process",
+            "path": "./plugins/official/libresnet50.so",
+            "input_map": [
+                {
+                    "key": "img_input",
+                    "val": "frame"
+                }
+            ],
+            "output_map": [
+                {
+                    "key": "meta_data",
+                    "val": "json"
+                }
+            ],
+            "params": {
+              "model": "xxx",
+              "thread_num": 2,
+              "batch_size": 2,
+              "score_threshold": 0.9,
+              "nms_threshold": 0.3
+            }
+        },
+        {
+            "name": "rabbitmq",
+            "path": "./plugins/official/librabbitmqq.so",
+            "input_map": [
+                {
+                    "key": "rabbitmq_input",
+                    "val": "json"
+                }
+            ],
+            "output_map": [
+                {
+                    "key": "rabbitmq_output",
+                    "val": "null"
+                }
+            ]
+        }
+    ]
+}
+

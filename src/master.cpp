@@ -16,6 +16,7 @@
 #include "stream.h"
 #include "cJSON.h"
 
+extern int SendHttpReply(struct evhttp_request* req, int code, const char* buf);
 static auto GetLowestSlave(MasterParams* master) {
     std::shared_ptr<SlaveParam> slave = nullptr;
     master->m_slave_mtx.lock();
@@ -395,6 +396,16 @@ static int ObjCB(char* buf, void* arg) {
     return 0;
 }
 
+static void HttpFileAck(struct evhttp_request* req, void* arg) {
+    char body[512];
+    Restful* rest = (Restful* )arg;
+    MediaServer* media = rest->media;
+    ConfigParams* config = media->GetConfig();
+    snprintf(body, sizeof(body), "{\"code\":0,\"msg\":\"success\",\"data\":{\"img_path\":"
+            "\"http://%s:%d/img/default.png\"}}", config->LocalIp(), config->nginx.http_port);
+    SendHttpReply(req, HTTP_OK, body);
+}
+
 void request_gencb(struct evhttp_request* req, void* arg) {
     char remote_ip[64] = {0};
     const char* uri = evhttp_request_get_uri(req);
@@ -402,8 +413,14 @@ void request_gencb(struct evhttp_request* req, void* arg) {
     if(req->remote_host != NULL) {
         strncpy(remote_ip, req->remote_host, sizeof(remote_ip));
     }
-    if(evhttp_request_get_command(req) != EVHTTP_REQ_GET) {
-        printf("request_gencb failed, only support http get,%d, "
+    int cmd = evhttp_request_get_command(req); 
+    if(cmd != EVHTTP_REQ_GET) {
+        // for debug
+        if(cmd == EVHTTP_REQ_POST && !memcmp(uri, "/api/file/upload", strlen("/api/file/upload"))) {
+            HttpFileAck(req, arg);
+            return;
+        }
+        printf("request_gencb failed, only support http get, cmd:%d, "
                 "url:%s, remote:%s\n", evhttp_request_get_command(req), uri, remote_ip);
         evhttp_send_error(req, HTTP_BADREQUEST, 0);
         return;
@@ -795,17 +812,40 @@ static void request_task_support(struct evhttp_request* req, void* arg) {
     cJSON_AddItemToObject(root, "data", data_root);
     cJSON_AddItemToObject(data_root, "alg", alg_root);
     //task support;
-    const char *flag = "/api/task/support?obj=";
-    char *obj = strstr(url, flag);
+    char* _url[master->m_slave_vec.size()];
+    const char* flag = "/api/task/support?obj=";
+    char* obj = strstr(url, flag);
     if(obj == NULL) {
         goto end;
     }
-    //obj = url + strlen(flag); //TODO:return task determined by obj type
+    obj = url + strlen(flag);
+    for(size_t j = 0; j < master->m_slave_vec.size(); j ++) {
+        _url[j] = (char* )malloc(256);
+    }
     for(size_t i = 0; i < master->cfg_task_vec.size(); i ++) {
         cJSON *fld;
+        char* name = master->cfg_task_vec[i].name;
+        char* input = master->cfg_task_vec[i].input;
+        int port = master->cfg_task_vec[i].http_file_port;
+        if(strcmp(obj, input)) {
+            continue;
+        }
+        int n = 0;
+        for(size_t j = 0; j < master->m_slave_vec.size(); j ++) {
+            auto slave = master->m_slave_vec[j];
+            if(!slave->alive) {
+                continue;
+            }
+            snprintf(_url[n++], 256, "http://%s:%d/file-%s", slave->ip, port, name);
+        }
         cJSON_AddItemToArray(alg_root, fld = cJSON_CreateObject());
-        cJSON_AddStringToObject(fld, "name", master->cfg_task_vec[i].c_str());
+        cJSON* url_root = cJSON_CreateStringArray((const char** )_url, n);
+        cJSON_AddStringToObject(fld, "name", name);
         cJSON_AddNumberToObject(fld, "disabled", 0);
+        cJSON_AddItemToObject(fld, "url", url_root);
+    }
+    for(size_t j = 0; j < master->m_slave_vec.size(); j ++) {
+        free(_url[j]);
     }
 end:
     *ppbody = cJSON_Print(root);
@@ -1053,27 +1093,75 @@ const char* MasterRestful::GetType(void) {
     return "master";
 }
 
-static void ReadCfg(MasterParams* master) {
+static int GetHttpFilePort(char* name) {
+    int port = -1;
     int size = 0;
-    const char *filename = "cfg/task.json";
-    auto buf = GetArrayBufFromFile(filename, size, "tasks");
+    const char *filename = CONFIG_FILE;
+    auto buf = GetArrayBufFromFile(filename, size, "system", "httpfile");
     if(buf == nullptr) {
-        AppWarn("read %s failed", filename);
-        return;
+        AppWarn("read httpfile from %s failed", filename);
+        return port;
     }
     for(int i = 0; i < size; i ++) {
         auto arrbuf = GetBufFromArray(buf.get(), i);
         if(arrbuf == nullptr) {
             break;
         }
-        auto name = GetStrValFromJson(arrbuf.get(), "name");
-        auto config = GetStrValFromJson(arrbuf.get(), "config");
-        if(name == nullptr || config == nullptr) {
-            AppWarn("read name or config failed, %s", filename);
+        auto task = GetStrValFromJson(arrbuf.get(), "task");
+        int _port = GetIntValFromJson(arrbuf.get(), "port");
+        if(task == nullptr || _port < 0) {
+            AppWarn("read httpfile task/port failed, %s", filename);
             break;
         }
-        std::string _name(name.get());
-        master->cfg_task_vec.push_back(_name);
+        if(strcmp(name, task.get()) != 0) {
+            continue;
+        }
+        port = _port;
+    }
+    return port;
+}
+
+static void ReadCfg(MasterParams* master) {
+    // read task
+    int size = 0;
+    const char *filename = "cfg/task.json";
+    auto buf = GetArrayBufFromFile(filename, size, "tasks");
+    if(buf != nullptr) {
+        for(int i = 0; i < size; i ++) {
+            auto arrbuf = GetBufFromArray(buf.get(), i);
+            if(arrbuf == nullptr) {
+                break;
+            }
+            auto name = GetStrValFromJson(arrbuf.get(), "name");
+            auto input = GetStrValFromJson(arrbuf.get(), "input");
+            auto config = GetStrValFromJson(arrbuf.get(), "config");
+            if(name == nullptr || input == nullptr || config == nullptr) {
+                AppWarn("read name or config failed, %s", filename);
+                break;
+            }
+            TaskCfg task = {0};
+            strncpy(task.name, name.get(), sizeof(task.name));
+            strncpy(task.input, input.get(), sizeof(task.input));
+            if(!strncmp(task.input, "img", sizeof(task.input))) {
+                task.http_file_port = GetHttpFilePort(task.name);
+            }
+            master->cfg_task_vec.push_back(task);
+        }
+    }
+    else {
+        AppWarn("read %s failed", filename);
+    }
+    // read web client user/password
+    auto user = GetStrValFromFile(CONFIG_FILE, "system", "client", "user");
+    auto password = GetStrValFromFile(CONFIG_FILE, "system", "client", "password");
+    if(user != nullptr && password != nullptr) {
+        strncpy(master->user, user.get(), sizeof(master->user));
+        strncpy(master->password, password.get(), sizeof(master->password));
+    }
+    else {
+        strncpy(master->user, "admin", sizeof(master->user));
+        strncpy(master->password, "123456", sizeof(master->password));
+        AppWarn("read user/password failed, use default %s/%s", master->user, master->password);
     }
 }
 

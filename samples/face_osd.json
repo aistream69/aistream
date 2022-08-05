@@ -54,7 +54,8 @@
               "target_id": 0,
               "score_threshold": 0.9,
               "nms_threshold": 0.3,
-              "top_k": 5000
+              "top_k": 5000,
+              "skip": 1
             }
         },
         {
@@ -73,7 +74,7 @@
                 }
             ],
             "params": {
-              "color": [255, 0, 0],
+              "color": [0, 255, 0],
               "thickness": 1,
               "bitrate": 2000000,
               "gop": 100

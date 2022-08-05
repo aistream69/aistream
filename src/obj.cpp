@@ -15,6 +15,7 @@
 
 #include "stream.h"
 #include "obj.h"
+#include "httpfile.h"
 #include <thread>
 
 ObjParams::ObjParams(MediaServer* _media)
@@ -82,9 +83,65 @@ void ObjParams::ObjManager(void) {
     AppDebug("run ok");
 }
 
+void ObjParams::StartHttpfileTask(void) {
+    int size = 0;
+    SlaveParams* slave = media->GetSlave();
+    Pipeline* pipe = slave->GetPipe();;
+    ConfigParams* config = media->GetConfig();
+    const char* filename = CONFIG_FILE;
+
+    // wait output init from master
+    while(config->GetOutput() == nullptr) {
+        sleep(1);
+    }
+    AppDebug("wait output config ok, start task ...");
+    // cal obj base id by ip address
+    int a,b,c,d;
+    char* local_ip = config->LocalIp();
+    sscanf(local_ip, "%d.%d.%d.%d", &a, &b, &c, &d);
+    int id = (d<<24) + (c<<16) + (b<<8) + a;
+    auto buf = GetArrayBufFromFile(filename, size, "system", "httpfile");
+    if(buf == nullptr) {
+        AppWarn("read %s failed", filename);
+        return;
+    }
+    for(int i = 0; i < size; i ++) {
+        // parase task from json config
+        auto arrbuf = GetBufFromArray(buf.get(), i);
+        if(arrbuf == nullptr) {
+            break;
+        }
+        auto task_name = GetStrValFromJson(arrbuf.get(), "task");
+        if(task_name == nullptr) {
+            AppWarn("get task name failed");
+            break;
+        }
+        // wait alg support
+        int try_sec = 10;
+        do {
+            auto alg = pipe->GetAlgTask(task_name.get());
+            if(alg != nullptr) {
+                break;
+            }
+            sleep(1);
+        } while(try_sec--);
+        // add obj id
+        auto obj = std::make_shared<HttpFile>(media);
+        obj->SetId(id + i);
+        obj->SetParams(arrbuf.get());
+        Put2ObjQue(obj);
+        // start task
+        auto task = std::make_shared<TaskParams>(obj);
+        task->SetTaskName(task_name.get());
+        obj->Put2TaskQue(task);
+    }
+}
+
 void ObjParams::Start(void) {
     std::thread t(&ObjParams::ObjManager, this);
     t.detach();
+    std::thread _t(&ObjParams::StartHttpfileTask, this);
+    _t.detach();
 }
 
 Object::Object(MediaServer *_media)

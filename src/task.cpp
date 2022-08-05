@@ -77,13 +77,14 @@ int TaskParams::Stop(bool sync) {
 bool TaskParams::KeepAlive(void) {
     auto _obj = GetTaskObj();
     assert(_obj != nullptr);
-
     MediaServer* media = _obj->media;
+    ConfigParams* config = media->GetConfig();
+
     if(task_beat == 0) {
         task_beat = media->now_sec;
         return false;
     }
-    else if(media->now_sec - task_beat > 180) { //TODO: support timeout in config.json
+    else if(media->now_sec - task_beat > config->GetTaskTimeout()) {
         AppWarn("id:%d,task:%s,detected exception, restart it ...", _obj->GetId(), name);
         task_beat = media->now_sec;
         return false;

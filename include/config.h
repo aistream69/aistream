@@ -40,6 +40,7 @@ public:
     int GetMRestPort(void) {return master_rest_port;}
     int GetSRestPort(void) {return slave_rest_port;}
     int GetObjMax(void) {return obj_max;}
+    int GetTaskTimeout(void) {return task_timeout_sec;}
     void SetOutput(char *str);
     auto GetOutput(void) {return out_params;}
     NginxParams nginx;
@@ -51,6 +52,7 @@ private:
     int master_rest_port;
     int slave_rest_port;
     int obj_max;
+    int task_timeout_sec;
     std::shared_ptr<char> out_params;
 };
 

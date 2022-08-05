@@ -17,6 +17,7 @@ include_directories(
     "${PLUGINS_OFFICIAL}/rtsp"
     "${PLUGINS_OFFICIAL}/rtmp"
     "${PLUGINS_OFFICIAL}/gat1400"
+    "${PLUGINS_OFFICIAL}/httpfile"
     "${PROJECT_ROOT_PATH}/work/cjson/inc"
     "${PROJECT_ROOT_PATH}/work/3rdparty/libevent/release/include"
     "${PROJECT_ROOT_PATH}/work/3rdparty/mongodb/release/include/libmongoc-1.0"
