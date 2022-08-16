@@ -43,11 +43,11 @@ int TaskParams::Start(void) {
     Pipeline* pipe = slave->GetPipe();;
     alg = pipe->GetAlgTask(name);
     if(alg == nullptr) {
-        AppWarn("id:%d, task:%s, get alg task failed", _obj->GetId(), name);
+        AppWarn("id:%d, task:%s, get task failed", _obj->GetId(), name);
         return -1;
     }
     if(alg->AssignToThreads(shared_from_this()) != true) {
-        AppWarn("assign ele to threads failed, id:%d,alg:%s", _obj->GetId(), name);
+        AppWarn("assign ele to threads failed, id:%d,task:%s", _obj->GetId(), name);
         return -1;
     }
 
@@ -56,7 +56,7 @@ int TaskParams::Start(void) {
         auto tt = thread_vec[i];
         tt->Start(shared_from_this());
     }
-    AppDebug("start task ok, id:%d,alg:%s", _obj->GetId(), name);
+    AppDebug("start task ok, id:%d,task:%s", _obj->GetId(), name);
 
     return 0;
 }

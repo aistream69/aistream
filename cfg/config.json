@@ -36,7 +36,12 @@
             {
                 "task": "resnet50",
                 "port" : 11606,
-                "threads": 10
+                "threads": 3
+            },
+            {
+                "task": "yolov3",
+                "port" : 11608,
+                "threads": 3
             }
         ]
     }

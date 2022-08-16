@@ -477,6 +477,11 @@ static void request_login(struct evhttp_request* req, void* arg) {
     }
 }
 
+/**********************************************************
+{
+  "username": "admin",
+}
+**********************************************************/
 static void request_logout(struct evhttp_request* req, void* arg) {
     request_first_stage;
 }
@@ -830,18 +835,26 @@ static void request_task_support(struct evhttp_request* req, void* arg) {
         if(strcmp(obj, input)) {
             continue;
         }
+        cJSON_AddItemToArray(alg_root, fld = cJSON_CreateObject());
+        cJSON_AddStringToObject(fld, "name", name);
+        cJSON_AddNumberToObject(fld, "disabled", 0);
+        if(!strcmp(obj, "video")) {
+            continue;
+        }
         int n = 0;
         for(size_t j = 0; j < master->m_slave_vec.size(); j ++) {
             auto slave = master->m_slave_vec[j];
             if(!slave->alive) {
                 continue;
             }
-            snprintf(_url[n++], 256, "http://%s:%d/file-%s", slave->ip, port, name);
+            if(strlen(slave->internet_ip) > 0) {
+                snprintf(_url[n++], 256, "http://%s:%d/file-%s", slave->internet_ip, port, name);
+            }
+            else {
+                snprintf(_url[n++], 256, "http://%s:%d/file-%s", slave->ip, port, name);
+            }
         }
-        cJSON_AddItemToArray(alg_root, fld = cJSON_CreateObject());
         cJSON* url_root = cJSON_CreateStringArray((const char** )_url, n);
-        cJSON_AddStringToObject(fld, "name", name);
-        cJSON_AddNumberToObject(fld, "disabled", 0);
         cJSON_AddItemToObject(fld, "url", url_root);
     }
     for(size_t j = 0; j < master->m_slave_vec.size(); j ++) {

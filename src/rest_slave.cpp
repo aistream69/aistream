@@ -33,8 +33,18 @@ static void request_logout(struct evhttp_request* req, void* arg) {
 static void request_system_init(struct evhttp_request* req, void* arg) {
     request_first_stage;
     CommonParams* params = (CommonParams* )arg;
+    char* buf = (char* )params->arga;
     Restful* rest = (Restful* )params->argc;
     MediaServer* media = rest->media;
+    SlaveParams* slave = media->GetSlave();
+    auto ip = GetStrValFromJson(buf, "ip");
+    auto internet_ip = GetStrValFromJson(buf, "internet_ip");
+    if(ip == nullptr || internet_ip == nullptr) {
+        AppWarn("get ip/internet_ip failed");
+        return ;
+    }
+    strncpy(slave->_ip, ip.get(), sizeof(slave->_ip));
+    strncpy(slave->_internet_ip, internet_ip.get(), sizeof(slave->_internet_ip));
     media->system_init = 1;
 }
 

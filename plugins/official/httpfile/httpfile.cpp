@@ -316,7 +316,7 @@ static void HttpRequest(struct evhttp_request* req, void* arg) {
     struct evbuffer* input_buf;
     const char* content_type, * _content_length;
     HttpParams* http_params = (HttpParams* )arg;
-    char boundary[256], url[URL_LEN];
+    char boundary[256], url[URL_LEN] = {0};
     HttpFilee http_file = {0};
 
     int cmd = evhttp_request_get_command(req); 
@@ -382,6 +382,7 @@ static void *DispatchThread(void* arg) {
 static int StartServer(HttpServer* http) {
     const char* url[] = {
         "/file-resnet50",
+        "/file-yolov3",
     };
     int fd = HttpBindSocket(http->port);
     if(fd < 0) {

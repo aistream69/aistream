@@ -1,0 +1,14 @@
+{
+    "name": "AIStream",
+    "version": "0.1.0",
+    "description": "API接口文档",
+    "title": "AIStream",
+    "order": [
+        "System",
+        "Object",
+        "Task",
+        "HttpGet",
+        "Output"
+    ]
+}
+

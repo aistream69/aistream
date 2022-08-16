@@ -1,0 +1,66 @@
+{
+    "batch_size": 1,
+    "pipeline": [
+        {
+            "name": "object",
+            "path": "cfg/object.json",
+            "input_map": [
+                {
+                    "key": "input",
+                    "val": "entry"
+                }
+            ],
+            "output_map": [
+                {
+                    "key": "output",
+                    "val": "frame"
+                }
+            ]
+        },
+        {
+            "name": "process",
+            "path": "./plugins/official/libyolov3opencv.so",
+            "input_map": [
+                {
+                    "key": "img_input",
+                    "val": "frame"
+                }
+            ],
+            "output_map": [
+                {
+                    "key": "meta_data",
+                    "val": "json"
+                }
+            ],
+            "params": {
+              "model": "./data/model/yolo/yolov3.weights",
+              "cfg": "./data/model/yolo/yolov3.cfg",
+              "width": 416,
+              "height": 416,
+              "backend": 0,
+              "target": 0,
+              "scale": 0.00392,
+              "mean": "0 0 0",
+              "thr": 0.5,
+              "nms": 0.4
+            }
+        },
+        {
+            "name": "rabbitmq",
+            "path": "./plugins/official/librabbitmqq.so",
+            "input_map": [
+                {
+                    "key": "rabbitmq_input",
+                    "val": "json"
+                }
+            ],
+            "output_map": [
+                {
+                    "key": "rabbitmq_output",
+                    "val": "null"
+                }
+            ]
+        }
+    ]
+}
+

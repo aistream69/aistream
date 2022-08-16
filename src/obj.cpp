@@ -58,7 +58,9 @@ std::shared_ptr<Object> ObjParams::GetObj(int id) {
 bool ObjParams::DelFromObjQue(int id) {
     obj_mtx.lock();
     for(auto itr = obj_vec.begin(); itr != obj_vec.end(); ++itr) {
-        if((*itr)->GetId() == id) {
+        auto obj = *itr;
+        if(obj->GetId() == id) {
+            obj->DelFromTaskQue("all");
             obj_vec.erase(itr);
             break;
         }
@@ -178,10 +180,10 @@ std::shared_ptr<TaskParams> Object::GetTask(char *name) {
     return task;
 }
 
-bool Object::DelFromTaskQue(char *name) {
+bool Object::DelFromTaskQue(const char *name) {
     task_mtx.lock();
     for(auto itr = task_vec.begin(); itr != task_vec.end(); ++itr) {
-        if(!strcmp((*itr)->GetTaskName(), name)) {
+        if(!strcmp(name, "all") || !strcmp((*itr)->GetTaskName(), name)) {
             (*itr)->Stop();
             task_vec.erase(itr);
             break;

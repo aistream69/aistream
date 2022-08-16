@@ -29,6 +29,8 @@ public:
     Pipeline* GetPipe(void) {return pipe;}
     void Start(void);
     MediaServer* media;
+    char _ip[128];
+    char _internet_ip[128];
 private:
     Pipeline* pipe;
 };

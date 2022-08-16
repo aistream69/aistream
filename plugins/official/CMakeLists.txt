@@ -10,12 +10,14 @@ include_directories(
     "${PROJECT_ROOT_PATH}/work/3rdparty/ffmpeg/release/include"
     "${PROJECT_ROOT_PATH}/work/3rdparty/rabbitmq/release/include"
     "${PROJECT_ROOT_PATH}/work/3rdparty/libevent/release/include"
+    "${PROJECT_ROOT_PATH}/work/3rdparty/opencv/release/include/opencv4"
     )
 link_directories(
     "${PROJECT_ROOT_PATH}/plugins/lib"
     "${PROJECT_ROOT_PATH}/work/3rdparty/rtsp/release/lib"
     "${PROJECT_ROOT_PATH}/work/3rdparty/rabbitmq/release/lib/x86_64-linux-gnu"
     "${PROJECT_ROOT_PATH}/work/3rdparty/libevent/release/lib"
+    "${PROJECT_ROOT_PATH}/work/3rdparty/opencv/release/lib"
     )
 
 add_compile_options(-fPIC)
@@ -28,7 +30,8 @@ add_library(cpuyuvdec SHARED decode/decode_cpu_yuv.cpp)
 add_library(preview SHARED preview/preview.cpp)
 add_library(osd SHARED osd/osd.cpp)
 add_library(rabbitmqq SHARED output/rabbitmq.cpp)
-add_library(resnet50 SHARED resnet50/resnet50.cpp)
+add_library(resnet50opencv SHARED resnet50/resnet50_opencv.cpp)
+add_library(yolov3opencv SHARED yolov3/yolov3_opencv.cpp)
 
 add_dependencies(rtsp rtsplib)
 add_dependencies(rtmp common)
@@ -38,7 +41,8 @@ add_dependencies(cpuyuvdec common)
 add_dependencies(preview common)
 add_dependencies(osd common)
 add_dependencies(rabbitmqq rabbitmq)
-add_dependencies(resnet50 cjson)
+add_dependencies(resnet50opencv cjson opencv)
+add_dependencies(yolov3opencv cjson opencv)
 
 target_link_libraries(rtsp
     -lplayer
@@ -75,6 +79,22 @@ target_link_libraries(osd
     )
 target_link_libraries(rabbitmqq
     -lrabbitmq
+    -Wl,-rpath,lib
+    )
+target_link_libraries(resnet50opencv
+    -lopencv_highgui
+    -lopencv_core
+    -lopencv_imgproc
+    -lopencv_imgcodecs
+    -lopencv_dnn
+    -Wl,-rpath,lib
+    )
+target_link_libraries(yolov3opencv
+    -lopencv_highgui
+    -lopencv_core
+    -lopencv_imgproc
+    -lopencv_imgcodecs
+    -lopencv_dnn
     -Wl,-rpath,lib
     )
 

@@ -19,7 +19,7 @@
         },
         {
             "name": "process",
-            "path": "./plugins/official/libresnet50.so",
+            "path": "./plugins/official/libresnet50opencv.so",
             "input_map": [
                 {
                     "key": "img_input",
@@ -33,11 +33,11 @@
                 }
             ],
             "params": {
-              "model": "xxx",
-              "thread_num": 2,
-              "batch_size": 2,
-              "score_threshold": 0.9,
-              "nms_threshold": 0.3
+              "model": "./data/model/resnet/resnet50-v2-7.onnx",
+              "backend": 0,
+              "target": 0,
+              "scale": 0.00392,
+              "mean": "123.675 116.28 103.53"
             }
         },
         {

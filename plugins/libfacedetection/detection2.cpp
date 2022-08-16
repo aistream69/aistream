@@ -27,6 +27,7 @@
 #include "log.h"
 
 using namespace cv;
+using namespace dnn;
 
 typedef struct {
     int id;
@@ -40,7 +41,7 @@ typedef struct {
 
 typedef struct {
     std::mutex mtx;
-    cv::dnn::Net net;
+    Net net;
     float score_threshold;
     float nms_threshold;
     int top_k;
@@ -238,12 +239,12 @@ static int get_detections(cv::Mat faces, int w, int h, auto& result) {
 
 extern "C" int DetectionInit(ElementData* data, char* params) {
     strncpy(data->input_name[0], "detection_input", sizeof(data->input_name[0]));
-    if(engine != NULL) {
-        return 0;
-    }
     if(params == NULL) {
         AppWarn("params is null");
         return -1;
+    }
+    if(engine != NULL) {
+        return 0;
     }
     auto model = GetStrValFromJson(params, "model");
     int backend_id = GetIntValFromJson(params, "backend_id");
@@ -261,7 +262,7 @@ extern "C" int DetectionInit(ElementData* data, char* params) {
         skip = 1;
     }
 
-    cv::dnn::Net net = cv::dnn::readNet(model.get(), "");
+    Net net = readNet(model.get(), "");
     if(net.empty()) {
         AppWarn("create engine failed, model:%s", model.get());
         return -1;
@@ -308,7 +309,7 @@ extern "C" int DetectionProcess(IHandle handle, TensorData* data) {
         unsigned char* v = u + w*h/4;
         ConvertYUV2RGB(y, u, v, detection->rgb_buf, w, h, pkt->_params.type);
         Mat img = Mat(h, w, CV_8UC3, detection->rgb_buf);
-        Mat input_blob = cv::dnn::blobFromImage(img);
+        Mat input_blob = blobFromImage(img);
         // Forward
         engine->mtx.lock();
         engine->net.setInput(input_blob);

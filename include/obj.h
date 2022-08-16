@@ -35,7 +35,7 @@ public:
     virtual char* GetPath(char* path) {return path;}
     bool Put2TaskQue(std::shared_ptr<TaskParams> task);
     std::shared_ptr<TaskParams> GetTask(char *name);
-    bool DelFromTaskQue(char *name);
+    bool DelFromTaskQue(const char *name);
     void TraverseTaskQue(void);
     void SetParams(char *str);
     auto GetParams(void) {return params;}

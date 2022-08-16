@@ -5,6 +5,13 @@
 ## 架构
 ![add image](doc/img/architecture.png)
 
+## 文档
+[Restful API](http://124.222.53.156:8080/restfulapi)
+
+## 客户端
+[Web Client](http://124.222.53.156:8080/aistream)  
+默认用户名/密码: admin/123456
+
 ## 特性
 * [接口](#文本)
     * Restful API + json
@@ -23,15 +30,15 @@
 * [集群](#文本)
     * 支持master/slave模式，自动负载均衡，无限扩展
     * 每个slave支持GPU一机多卡
-    * 支持数据库参数持久化，用户只需要调用一次RESTful，重启自动运行任务
+    * 支持数据库参数持久化，用户只需要通过RESTful APIs配置一次，重启自动运行任务
 * [客户端](#文本)
-    * 提供一个基于vue框架的web client，支持实时视频预览、实时抓拍、设备管理、任务管理、数据查询、集群管理等基本功能
+    * 提供一个基于vue框架的web client，支持实时视频预览、实时抓拍、图片识别、设备管理、任务管理、数据查询、集群管理等基本功能
 
 ## 测试步骤
 ### 1. 下载第三方依赖包
     链接：https://pan.baidu.com/s/1_acGS6FxyPRYPK9WTixHvA
     提取码：t3uo
-    所有tar.gz文件拷贝到work/pkg
+    下载文件到相应目录。
 ### 2. 编译
     mkdir build
     cd build
@@ -39,7 +46,6 @@
     make
 ### 3. 运行
     首先搭建rabbitmq服务器(假如IP为10.1.1.3)，如果没有可修改samples/face_detection.json把插件节点rabbitmq删除即可。
-
     启动服务: 
         ./aistream
 ### 4. Sample测试 -- 人脸检测/跟踪/抓拍
@@ -48,10 +54,15 @@
 #### 任务配置(pipeline)
 ![add image](doc/img/face_capture_json.png)
 #### 启动任务
-    通过Http Restful Api发送任务启动命令:
+    单机模式(访问某个slave默认端口15515):
         curl -d "{\"type\":\"mq\",\"data\":{\"host\":\"10.1.1.3\",\"port\":5672,\"username\":\"guest\",\"password\":\"guest\",\"exchange\":\"amq.direct\",\"routingkey\":\"\"}}" http://127.0.0.1:15515/api/system/set/output
         curl -d "{\"id\":99,\"data\":{\"tcp_enable\":0,\"url\":\"rtsp://127.0.0.1:8554/test.264\"}}" http://127.0.0.1:15515/api/obj/add/rtsp
         curl -d "{\"id\":99,\"data\":{\"task\":\"face_capture\"}}" http://127.0.0.1:15515/api/task/start
+    集群模式(访问master默认端口11706):
+        curl -d "{\"ip\":\"127.0.0.1\",\"rest_port\":15515,\"internet_ip\":\"\"}" http://127.0.0.1:11706/api/system/slave/add
+        curl -d "{\"type\":\"mq\",\"data\":{\"host\":\"10.1.1.3\",\"port\":5672,\"username\":\"guest\",\"password\":\"guest\",\"exchange\":\"amq.direct\",\"routingkey\":\"\"}}" http://127.0.0.1:11706/api/system/set/output
+        curl -d "{\"id\":99,\"data\":{\"tcp_enable\":0,\"url\":\"rtsp://127.0.0.1:8554/test.264\"}}" http://127.0.0.1:11706/api/obj/add/rtsp
+        curl -d "{\"id\":99,\"data\":{\"task\":\"face_capture\"}}" http://127.0.0.1:11706/api/task/start
 
     正常运行的话，可以在rabbitmq客户端接收到如下结构化信息(http图片访问依赖nginx服务器，配置见cfg/config.json)：
     {
@@ -83,12 +94,26 @@
     ./configure --add-module=/path/to/nginx-http-flv-module
     make
     sudo make install
-    确保存在/usr/local/nginx/conf/servers/hls.conf，如果不存在则执行: cp -rfa conf/servers /usr/local/nginx/conf
 #### 运行
     /usr/local/nginx/sbin/nginx
 #### 配置
     修改aistream工程下cfg/config.json中nginx_path，与nginx安装目录一致，如"/usr/local/nginx"
-### 2. 备注
+### 2. mongodb
+#### 安装
+    集群运行及参数持久化依赖mongodb数据库，请自行安装.
+#### 初始化配置
+    非"用户名/密码"认证模式启动db server:
+    mongod --config ./mongod.conf
+    初始化"用户名/密码":
+    mongo 127.0.0.1:27017
+    > use aistream
+    > db.createUser({user:"admin",pwd:"123456",roles:[{role:"root",db:"admin"}]})
+    > quit()
+    停止db server:
+    mongod --config ./mongod.conf --shutdown
+    "用户名/密码"认证模式启动db server:
+    mongod --config ./mongod.conf --auth
+### 3. 备注
 #### 多输入
     如果模块有多个input，则input[0]需要连接到较慢的那个，参考samples/face_detection.json，tracker_input1必须连接到obj(目标检测，输入为rgb，且检测结果可能为0)，而不是rgb(每帧都有有效数据).
     

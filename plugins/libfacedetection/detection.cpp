@@ -26,6 +26,7 @@
 #include "log.h"
 
 using namespace cv;
+using namespace dnn;
 
 typedef struct {
     int id;
@@ -37,7 +38,7 @@ typedef struct {
 
 typedef struct {
     std::mutex mtx;
-    cv::dnn::Net net;
+    Net net;
     float score_threshold;
     float nms_threshold;
     int top_k;
@@ -254,7 +255,7 @@ extern "C" int DetectionInit(ElementData* data, char* params) {
         return -1;
     }
 
-    cv::dnn::Net net = cv::dnn::readNet(model.get(), "");
+    Net net = readNet(model.get(), "");
     if(net.empty()) {
         AppWarn("create engine failed, model:%s", model.get());
         return -1;
@@ -296,7 +297,7 @@ extern "C" int DetectionProcess(IHandle handle, TensorData* data) {
 
     // PreProcess
     Mat img = Mat(h, w, CV_8UC3, buf);
-    Mat input_blob = cv::dnn::blobFromImage(img);
+    Mat input_blob = blobFromImage(img);
     // Forward
     engine->mtx.lock();
     engine->net.setInput(input_blob);

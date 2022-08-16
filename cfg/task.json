@@ -19,6 +19,11 @@
       "name": "resnet50",
       "input": "img",
       "config": "./samples/resnet50.json"
+    },
+    {
+      "name": "yolov3",
+      "input": "img",
+      "config": "./samples/yolov3.json"
     }
   ]
 }

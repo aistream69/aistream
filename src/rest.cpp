@@ -214,9 +214,9 @@ int request_cb(struct evhttp_request* req, void (*http_task)(struct evhttp_reque
         default: cmdtype = "unknown"; break;
     }
     url = (char *)evhttp_request_get_uri(req);
-    if(cmdtype != NULL) {
-        //printf("received a %s request for %s\n", cmdtype, url);
-    }
+    //if(cmdtype != NULL && req->remote_host != NULL && strcmp(url, "/api/system/status") != 0) {
+    //    printf("recv a %s request, url:%s, remote:%s\n", cmdtype, url, req->remote_host);
+    //}
     headers = evhttp_request_get_input_headers(req);
     for (header = headers->tqh_first; header;
         header = header->next.tqe_next) {
