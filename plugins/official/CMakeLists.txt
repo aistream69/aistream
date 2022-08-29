@@ -11,6 +11,7 @@ include_directories(
     "${PROJECT_ROOT_PATH}/work/3rdparty/rabbitmq/release/include"
     "${PROJECT_ROOT_PATH}/work/3rdparty/libevent/release/include"
     "${PROJECT_ROOT_PATH}/work/3rdparty/opencv/release/include/opencv4"
+    "${PROJECT_ROOT_PATH}/work/3rdparty/freetype/release/include/freetype2"
     )
 link_directories(
     "${PROJECT_ROOT_PATH}/plugins/lib"
@@ -18,6 +19,7 @@ link_directories(
     "${PROJECT_ROOT_PATH}/work/3rdparty/rabbitmq/release/lib/x86_64-linux-gnu"
     "${PROJECT_ROOT_PATH}/work/3rdparty/libevent/release/lib"
     "${PROJECT_ROOT_PATH}/work/3rdparty/opencv/release/lib"
+    "${PROJECT_ROOT_PATH}/work/3rdparty/freetype/release/lib"
     )
 
 add_compile_options(-fPIC)
@@ -39,7 +41,7 @@ add_dependencies(httpfile libevent)
 add_dependencies(cpurgbdec common)
 add_dependencies(cpuyuvdec common)
 add_dependencies(preview common)
-add_dependencies(osd common)
+add_dependencies(osd common freetype)
 add_dependencies(rabbitmqq rabbitmq)
 add_dependencies(resnet50opencv cjson opencv)
 add_dependencies(yolov3opencv cjson opencv)
@@ -75,6 +77,7 @@ target_link_libraries(preview
     )
 target_link_libraries(osd
     -lcommon
+    -lfreetype
     -Wl,-rpath,lib
     )
 target_link_libraries(rabbitmqq

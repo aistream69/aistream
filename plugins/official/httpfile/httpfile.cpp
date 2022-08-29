@@ -319,6 +319,10 @@ static void HttpRequest(struct evhttp_request* req, void* arg) {
     char boundary[256], url[URL_LEN] = {0};
     HttpFilee http_file = {0};
 
+    if(req->remote_host != NULL) {
+        const char* uri = (char* )evhttp_request_get_uri(req);
+        printf("recv a httpfile request, uri:%s, remote:%s\n", uri, req->remote_host);
+    }
     int cmd = evhttp_request_get_command(req); 
     if(cmd != EVHTTP_REQ_POST) {
         printf("warning, http req cmd is not post, %d\n", cmd);

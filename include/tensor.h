@@ -93,6 +93,7 @@ typedef struct {
     float height;
     float score;
     int classid;
+    char name[64];
 } DetectionResult;
 
 class Packet {

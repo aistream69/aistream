@@ -43,6 +43,7 @@ public:
     int GetTaskTimeout(void) {return task_timeout_sec;}
     void SetOutput(char *str);
     auto GetOutput(void) {return out_params;}
+    int img_save_days;
     NginxParams nginx;
     MediaServer* media;
 private:

@@ -32,6 +32,7 @@ public:
     char _ip[128];
     char _internet_ip[128];
 private:
+    void SlaveManager(void);
     Pipeline* pipe;
 };
 

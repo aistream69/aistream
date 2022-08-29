@@ -35,6 +35,7 @@ void HangUp(void);
 int DirCheck(const char *dir);
 int GetLocalIp(char host_ip[128]);
 void NginxInit(NginxParams& nginx);
+int DelOldFile(const char* dir, uint32_t max_sec, int layer, const char* suffix);
 std::unique_ptr<char[]> ReadFile2Buf(const char *filename);
 int ReadFile(const char *filename, void *buf, int size);
 int ReadFile2(const char *filename, void *buf, int max);

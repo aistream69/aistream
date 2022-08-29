@@ -40,5 +40,6 @@ include(cmake/rtsp.cmake)
 include(cmake/eigen.cmake)
 include(cmake/rabbitmq.cmake)
 include(cmake/mongodb.cmake)
+include(cmake/freetype.cmake)
 add_dependencies(ffmpeg x264)
 

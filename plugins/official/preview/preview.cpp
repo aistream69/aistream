@@ -61,7 +61,7 @@ typedef struct {
     int framesize_max;
     NginxParams nginx;
     pthread_t pid;
-    std::mutex obj_mtx;
+    std::mutex _obj_mtx;
     std::vector<PreviewParams*> obj_vec;
     int running;
 } PreviewConfig;
@@ -456,7 +456,7 @@ static int PreviewDaemon(auto preview) {
 
 static void *PreviewDaemonThread(void *arg) {
     while(config.running) {
-        std::unique_lock<std::mutex> lock(config.obj_mtx);
+        std::unique_lock<std::mutex> lock(config._obj_mtx);
         auto obj_vec = config.obj_vec;
         for(auto itr = obj_vec.begin(); itr != obj_vec.end(); ++itr) {
             DelOldTsFile(*itr);
@@ -526,7 +526,7 @@ extern "C" IHandle PreviewStart(int channel, char* params) {
 
     preview->last_ts_num = 0;
     preview->last_ts_same_cnt = 0;
-    std::unique_lock<std::mutex> lock(config.obj_mtx);
+    std::unique_lock<std::mutex> lock(config._obj_mtx);
     config.obj_vec.push_back(preview);
 
     return preview;
@@ -564,7 +564,7 @@ extern "C" int PreviewStop(IHandle handle) {
             AppError("pthread join failed, %s", strerror(errno));
         }
     }
-    std::unique_lock<std::mutex> lock(config.obj_mtx);
+    std::unique_lock<std::mutex> lock(config._obj_mtx);
     auto obj_vec = config.obj_vec;
     for(auto itr = obj_vec.begin(); itr != obj_vec.end(); ++itr) {
         if((*itr)->id == preview->id) {

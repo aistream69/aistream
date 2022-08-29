@@ -55,7 +55,7 @@
               "score_threshold": 0.9,
               "nms_threshold": 0.3,
               "top_k": 5000,
-              "skip": 1
+              "skip": 5
             }
         },
         {
@@ -74,10 +74,16 @@
                 }
             ],
             "params": {
-              "color": [0, 255, 0],
-              "thickness": 1,
-              "bitrate": 2000000,
-              "gop": 100
+                "color": [0, 255, 0],
+                "thickness": 1,
+                "bitrate": 2000000,
+                "gop": 100,
+                "font": {
+                    "width": 24,
+                    "height": 24,
+                    "color": [255, 0, 0],
+                    "ttf": "./data/cour.ttf"
+                }
             }
         },
         {

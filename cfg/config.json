@@ -11,7 +11,7 @@
         "queue_len": 50,
         "framesize_max": 1024000,
         "rgb_queue_len": 10,
-        "rgb_skip": 5
+        "rgb_skip": 1
     },
     "img": {
         "queue_len": 50,

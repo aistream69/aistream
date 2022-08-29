@@ -24,11 +24,34 @@ SlaveParams::SlaveParams(MediaServer* _media)
 SlaveParams::~SlaveParams(void) {
 }
 
+static int DelOldImage(SlaveParams* slave) {
+    char dir[URL_LEN+16];
+    MediaServer* media = slave->media;
+    ConfigParams* config = media->GetConfig();
+    uint32_t max_sec = config->img_save_days * (24 * 60 * 60);
+    snprintf(dir, sizeof(dir), "%s/image", config->nginx.workdir);
+    DelOldFile(dir, max_sec, 0, ".jpg");
+    return 0;
+}
+
+void SlaveParams::SlaveManager(void) {
+    int i = 0;
+    while(media->running) {
+        if(i++ % 360 == 0) {
+            DelOldImage(this);
+        }
+        sleep(10);
+    }
+    AppDebug("run ok");
+}
+
 void SlaveParams::Start(void) {
     SlaveRestful* rest = new SlaveRestful(media);
     ObjParams* obj_params = media->GetObjParams();
     pipe->Start();
     rest->Start();
     obj_params->Start();
+    std::thread t(&SlaveParams::SlaveManager, this);
+    t.detach();
 }
 

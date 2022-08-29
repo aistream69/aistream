@@ -84,7 +84,6 @@ static cv::Mat postProcess(const std::vector<cv::Mat>& output_blobs, DetectionPa
         }
         float score = std::sqrt(clsScore * iouScore);
         face.at<float>(0, 14) = score;
-
         // Get bounding box
         float cx = (priors[i].x + loc_v[i*14+0] * variance[0] * priors[i].width)  * inputW;
         float cy = (priors[i].y + loc_v[i*14+1] * variance[0] * priors[i].height) * inputH;
@@ -96,28 +95,44 @@ static cv::Mat postProcess(const std::vector<cv::Mat>& output_blobs, DetectionPa
         face.at<float>(0, 1) = y1;
         face.at<float>(0, 2) = w;
         face.at<float>(0, 3) = h;
-
         // Get landmarks
-        face.at<float>(0, 4) = (priors[i].x + loc_v[i*14+ 4] * variance[0] * priors[i].width)  * inputW;  // right eye, x
-        face.at<float>(0, 5) = (priors[i].y + loc_v[i*14+ 5] * variance[0] * priors[i].height) * inputH;  // right eye, y
-        face.at<float>(0, 6) = (priors[i].x + loc_v[i*14+ 6] * variance[0] * priors[i].width)  * inputW;  // left eye, x
-        face.at<float>(0, 7) = (priors[i].y + loc_v[i*14+ 7] * variance[0] * priors[i].height) * inputH;  // left eye, y
-        face.at<float>(0, 8) = (priors[i].x + loc_v[i*14+ 8] * variance[0] * priors[i].width)  * inputW;  // nose tip, x
-        face.at<float>(0, 9) = (priors[i].y + loc_v[i*14+ 9] * variance[0] * priors[i].height) * inputH;  // nose tip, y
-        face.at<float>(0, 10) = (priors[i].x + loc_v[i*14+10] * variance[0] * priors[i].width)  * inputW; // right corner of mouth, x
-        face.at<float>(0, 11) = (priors[i].y + loc_v[i*14+11] * variance[0] * priors[i].height) * inputH; // right corner of mouth, y
-        face.at<float>(0, 12) = (priors[i].x + loc_v[i*14+12] * variance[0] * priors[i].width)  * inputW; // left corner of mouth, x
-        face.at<float>(0, 13) = (priors[i].y + loc_v[i*14+13] * variance[0] * priors[i].height) * inputH; // left corner of mouth, y
-
+        // right eye, x
+        face.at<float>(0, 4) = 
+            (priors[i].x + loc_v[i*14+ 4] * variance[0] * priors[i].width)  * inputW;
+        // right eye, y
+        face.at<float>(0, 5) = 
+            (priors[i].y + loc_v[i*14+ 5] * variance[0] * priors[i].height) * inputH;
+        // left eye, x
+        face.at<float>(0, 6) = 
+            (priors[i].x + loc_v[i*14+ 6] * variance[0] * priors[i].width)  * inputW;
+        // left eye, y
+        face.at<float>(0, 7) = 
+            (priors[i].y + loc_v[i*14+ 7] * variance[0] * priors[i].height) * inputH;
+        // nose tip, x
+        face.at<float>(0, 8) = 
+            (priors[i].x + loc_v[i*14+ 8] * variance[0] * priors[i].width)  * inputW;
+        // nose tip, y
+        face.at<float>(0, 9) = 
+            (priors[i].y + loc_v[i*14+ 9] * variance[0] * priors[i].height) * inputH;
+        // right corner of mouth, x
+        face.at<float>(0, 10) = 
+            (priors[i].x + loc_v[i*14+10] * variance[0] * priors[i].width)  * inputW;
+        // right corner of mouth, y
+        face.at<float>(0, 11) = 
+            (priors[i].y + loc_v[i*14+11] * variance[0] * priors[i].height) * inputH;
+       // left corner of mouth, x 
+        face.at<float>(0, 12) = 
+            (priors[i].x + loc_v[i*14+12] * variance[0] * priors[i].width)  * inputW;
+        // left corner of mouth, y
+        face.at<float>(0, 13) = 
+            (priors[i].y + loc_v[i*14+13] * variance[0] * priors[i].height) * inputH;
         faces.push_back(face);
     }
-    if (faces.rows > 1)
-    {
+    if (faces.rows > 1) {
         // Retrieve boxes and scores
         std::vector<Rect2i> faceBoxes;
         std::vector<float> faceScores;
-        for (int rIdx = 0; rIdx < faces.rows; rIdx++)
-        {
+        for (int rIdx = 0; rIdx < faces.rows; rIdx++) {
             faceBoxes.push_back(Rect2i(int(faces.at<float>(rIdx, 0)),
                                        int(faces.at<float>(rIdx, 1)),
                                        int(faces.at<float>(rIdx, 2)),
@@ -131,14 +146,12 @@ static cv::Mat postProcess(const std::vector<cv::Mat>& output_blobs, DetectionPa
 
         // Get NMS results
         cv::Mat nms_faces;
-        for (int idx: keepIdx)
-        {
+        for (int idx: keepIdx) {
             nms_faces.push_back(faces.row(idx));
         }
         return nms_faces;
     }
-    else
-    {
+    else {
         return faces;
     }
     return faces;
@@ -232,6 +245,7 @@ static int get_detections(cv::Mat faces, int w, int h, auto& result) {
         det.height = height;
         det.score = score;
         det.classid = 81; // coco:face
+        strncpy(det.name, "face", sizeof(det.name));
         result.push_back(det);
     }
     return 0;
@@ -327,7 +341,7 @@ extern "C" int DetectionProcess(IHandle handle, TensorData* data) {
     HeadParams params = {0};
     size_t size= sizeof(DetectionResult)*detection->result.size();
     if(size > 0) {
-        char* ptr = new char[size];
+        char* ptr = new char[size]();
         DetectionResult* dets = (DetectionResult* )ptr;
         for(size_t i = 0; i < detection->result.size(); i ++) {
             DetectionResult* det = dets + i;
@@ -337,6 +351,7 @@ extern "C" int DetectionProcess(IHandle handle, TensorData* data) {
             det->height = detection->result[i].height;
             det->score = detection->result[i].score;
             det->classid = detection->result[i].classid;
+            strcpy(det->name, detection->result[i].name);
         }
         params.ptr = ptr;
         params.ptr_size = size;

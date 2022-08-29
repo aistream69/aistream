@@ -412,6 +412,7 @@ void request_gencb(struct evhttp_request* req, void* arg) {
 
     if(req->remote_host != NULL) {
         strncpy(remote_ip, req->remote_host, sizeof(remote_ip));
+        printf("http request, url:%s, remote:%s\n", uri, remote_ip);
     }
     int cmd = evhttp_request_get_command(req); 
     if(cmd != EVHTTP_REQ_GET) {

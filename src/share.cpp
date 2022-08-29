@@ -615,6 +615,89 @@ end:
     return _val;
 }
 
+static int IsDateStr(char* name) {
+    int count = 0;
+    char *str = strrchr(name, '/');
+    if(str != NULL)
+        str++;
+    else
+        str = name;
+    while(isdigit(*str++))
+        count ++;
+    //20220101
+    if(count == 8)
+        return 1;
+    return 0;
+}
+
+static int CheckTime(char* name, uint32_t max_sec, long now) {
+    struct tm  _tm = {0};
+    char *str = strrchr(name, '/');
+    if(str != NULL)
+        str++;
+    else
+        str = name;
+    //20220101
+    if(sscanf(str, "%4d%2d%2d",&_tm.tm_year, &_tm.tm_mon, &_tm.tm_mday)!=3) {
+        printf("name is not date format. %s\n",str);
+        return -1;
+    }
+    _tm.tm_year -= 1900;
+    _tm.tm_mon -= 1;
+    if(_tm.tm_year <= 0)//ingore 1970
+        return -1;    
+    time_t t = mktime(&_tm);
+    uint32_t l = now - t;
+    if(l > max_sec)
+        return 0;
+    return -1;
+}
+
+int DelOldFile(const char* dir, uint32_t max_sec, int layer, const char* suffix) {
+    DIR* dirp;
+    struct dirent* dp;
+    struct stat st_dir = {0};
+    struct stat st = {0};
+    long now = time(NULL);
+
+    if((layer == 1) && ((!IsDateStr((char*)dir)) || (CheckTime((char*)dir, max_sec, now) != 0))) {
+        return 0;
+    }
+    stat(dir,&st_dir);
+    dirp = opendir(dir);
+    layer ++;
+
+    int count = 0;
+    char fullname[URL_LEN];
+    if(dirp != NULL) {
+        while((dp = readdir(dirp)) != NULL) {
+            count ++;
+            if(!strcmp(dp->d_name,".") || !strcmp(dp->d_name,"..")) {
+                continue;
+            }
+            snprintf(fullname, sizeof(fullname), "%s/%s", dir, dp->d_name);
+            if(0 == stat(fullname, &st)) {
+                if(S_ISDIR(st.st_mode)) {
+                    DelOldFile(fullname, max_sec, layer, suffix);
+                }
+                else if(S_ISREG(st.st_mode) && layer>1 && strstr(dp->d_name, suffix)) {
+                    //printf("del %s\n",dp->d_name);
+                    remove(fullname);
+                    count --;
+                    usleep(0);
+                }
+            }
+        }
+        closedir(dirp);
+        if(layer>1 && count<=2) {
+            //printf("remove dir %s\n",dir);
+            remove(dir);
+        }
+    }
+
+    return 0;
+}
+
 static int GetNginxPort(char* nginx_config_path, int& port) {
     char buf[256];
     FILE* fp = fopen(nginx_config_path, "rb");

@@ -39,6 +39,7 @@ bool ConfigParams::Read(const char *cfg) {
     if(task_timeout_sec < 0) {
         task_timeout_sec = 180;
     }
+    img_save_days = GetIntValFromJson(ptr, "img", "save_days");
     auto localhost = GetStrValFromJson(ptr, "system", "localhost");
     if(localhost != nullptr) {
         strncpy(local_ip, localhost.get(), sizeof(local_ip));

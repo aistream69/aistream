@@ -1,3 +1,18 @@
+/****************************************************************************************
+ * Copyright (C) 2021 aistream <aistream@yeah.net>
+ *
+ * Licensed under the BSD 3-Clause License (the "License"); you may not use this 
+ * file except in compliance with the License. You may obtain a copy of the License at
+ *
+ * https://opensource.org/licenses/BSD-3-Clause
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed
+ * under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+ * CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ *
+ ***************************************************************************************/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -229,8 +244,9 @@ extern "C" int YoloProcess(IHandle handle, TensorData* data) {
     // PreProcess
     std::vector<char> img_data(pkt->_data, pkt->_data + pkt->_size);
     Mat img = imdecode(Mat(img_data), IMREAD_UNCHANGED);
-    if(img.empty()) {
-        printf("yolov3, id:%d, imdecode failed, size:%ld\n", obj->id, pkt->_size);
+    if(img.empty() || img.channels() > 3) {
+        printf("yolov3, id:%d, imdecode failed, size:%ld, channel:%d\n", 
+                obj->id, pkt->_size, img.channels());
         return -1;
     }
     Mat blob;

@@ -143,7 +143,7 @@
  *                          {
  *                              "id":99,
  *                              "data":{
- *                                  "url":"rtsp://192.168.0.64/h264/ch1/main/av_stream"
+ *                                  "url":"rtmp://127.0.0.1:1935/myapp/stream99"
  *                              }
  *                          }
  * @apiSuccess (200) {int}      code    0:成功 1:失败
