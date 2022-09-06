@@ -26,9 +26,17 @@
 #include "share.h"
 #include "tensor.h"
 #include "config.h"
+#include "db.h"
 #include "log.h"
 
 using namespace cv;
+
+typedef struct {
+    char local_ip[128];
+    float capture_line;
+    NginxParams nginx;
+    DbParams* db;
+} TrackerParams;
 
 typedef struct {
     int capture;
@@ -43,11 +51,9 @@ typedef struct {
     BYTETracker *btrack;
     int last_capture_frameid;
     std::map<int, TParams*> tracking;
-} TrackerParams;
+} ModuleObj;
 
-static NginxParams nginx;
-static float capture_line = 0.66;
-static char local_ip[128] = {0};
+static TrackerParams tracker = {0};
 static BObject RectCorrect(STrack output_strack, int w, int h) {
     BObject det;
     vector<float> tlwh = output_strack.tlwh;
@@ -94,19 +100,19 @@ static void Rgb2Jpg(int id, BObject& det, auto rgb, char scene_path[URL_LEN], ch
     std::vector<unsigned char> obj_buf;
     MatToJpg(obj_img, obj_buf);
     snprintf(obj_path, URL_LEN, "%s/image/%s/%d/%ld_0_obj.jpg", 
-            nginx.workdir, date, id, tv.tv_sec);
+            tracker.nginx.workdir, date, id, tv.tv_sec);
     WriteFile(obj_path, &obj_buf[0], obj_buf.size(), "wb");
     snprintf(obj_path, URL_LEN, "http://%s:%d/image/%s/%d/%ld_0_obj.jpg", 
-            local_ip, nginx.http_port, date, id, tv.tv_sec);
+            tracker.local_ip, tracker.nginx.http_port, date, id, tv.tv_sec);
 
     std::vector<unsigned char> scene_buf;
     rectangle(scene_img, _rect, Scalar(0,255,0), 2);
     MatToJpg(scene_img, scene_buf);
     snprintf(scene_path, URL_LEN, "%s/image/%s/%d/%ld_0_scene.jpg", 
-            nginx.workdir, date, id, tv.tv_sec);
+            tracker.nginx.workdir, date, id, tv.tv_sec);
     WriteFile(scene_path, &scene_buf[0], scene_buf.size(), "wb");
     snprintf(scene_path, URL_LEN, "http://%s:%d/image/%s/%d/%ld_0_scene.jpg", 
-            local_ip, nginx.http_port, date, id, tv.tv_sec);
+            tracker.local_ip, tracker.nginx.http_port, date, id, tv.tv_sec);
 }
 
 static std::unique_ptr<char[]> MakeJson(int id, BObject& det, char *scene_url, char *obj_url) {
@@ -146,33 +152,33 @@ static std::unique_ptr<char[]> MakeJson(int id, BObject& det, char *scene_url, c
 }
 
 static std::unique_ptr<char[]> TrackCapture(vector<STrack> output_stracks, 
-                                TrackerParams* tracker, auto pkt, auto rgb) {
+                                ModuleObj* obj, auto pkt, auto rgb) {
     int w = pkt->_params.width;
     int h = pkt->_params.height;
-    float line = h*capture_line;
+    float line = h*tracker.capture_line;
     int frame_id = pkt->_params.frame_id;
     std::unique_ptr<char[]> json = nullptr;
     
     for(unsigned int i = 0; i < output_stracks.size(); i++) {
         vector<float> tlwh = output_stracks[i].tlwh;
         int track_id = (int)output_stracks[i].track_id;
-        auto itr = tracker->tracking.find(track_id);
+        auto itr = obj->tracking.find(track_id);
         float y_up = tlwh[1];
         float y_bottom = tlwh[1] + tlwh[3];
-        if(itr != tracker->tracking.end()) {
+        if(itr != obj->tracking.end()) {
             auto t = itr->second;
             t->last_frameid = frame_id;
-            if(t->capture || tracker->last_capture_frameid + 1 >= frame_id) {
+            if(t->capture || obj->last_capture_frameid + 1 >= frame_id) {
                 continue;
             }
             if((y_bottom >= line && !t->dir) || (y_up <= line && t->dir)) {
                 char scene_url[URL_LEN] = {0}, obj_url[URL_LEN] = {0};
                 BObject det = RectCorrect(output_stracks[i], w, h);
-                Rgb2Jpg(tracker->id, det, rgb, scene_url, obj_url); // 40ms-50ms
-                json = MakeJson(tracker->id, det, scene_url, obj_url);
-                tracker->last_capture_frameid = frame_id;
+                Rgb2Jpg(obj->id, det, rgb, scene_url, obj_url); // 40ms-50ms
+                json = MakeJson(obj->id, det, scene_url, obj_url);
+                obj->last_capture_frameid = frame_id;
                 t->capture = 1;
-                printf("id:%d, trackid:%d, frameid:%d, capture ok\n", tracker->id, track_id, frame_id);
+                printf("id:%d, trackid:%d, frameid:%d, capture ok\n", obj->id, track_id, frame_id);
                 break; // capture one object every frame
             }
         }
@@ -186,14 +192,14 @@ static std::unique_ptr<char[]> TrackCapture(vector<STrack> output_stracks,
             else {
                 t->dir = 1;
             }
-            tracker->tracking[track_id] = t;
+            obj->tracking[track_id] = t;
         }
     }
     if(frame_id % 100 == 0) {
-        for(auto itr = tracker->tracking.begin(); itr != tracker->tracking.end();) {
+        for(auto itr = obj->tracking.begin(); itr != obj->tracking.end();) {
             auto t = itr->second;
             if(t->last_frameid + 500 < frame_id) { // 25fps*20s
-                tracker->tracking.erase(itr++);
+                obj->tracking.erase(itr++);
                 delete t;
             }
             else {
@@ -209,39 +215,44 @@ extern "C" int TrackerInit(ElementData* data, char* params) {
     strncpy(data->input_name[0], "tracker_input1", sizeof(data->input_name[0]));
     strncpy(data->input_name[1], "tracker_input2", sizeof(data->input_name[1]));
     
-    if(strlen(local_ip) > 0) {
+    static int init = 0;
+    if(__sync_add_and_fetch(&init, 1) > 1) {
         return 0;
     }
     if(params == NULL) {
         AppWarn("params is null");
         return -1;
     }
-    capture_line = GetDoubleValFromJson(params, "capture_line");
-    if(capture_line <= 0) {
-        capture_line = 0.66;
+    tracker.capture_line = GetDoubleValFromJson(params, "capture_line");
+    if(tracker.capture_line <= 0) {
+        tracker.capture_line = 0.66;
     }
     auto localhost = GetStrValFromFile(CONFIG_FILE, "system", "localhost");
     if(localhost != nullptr) {
-        strncpy(local_ip, localhost.get(), sizeof(local_ip));
+        strncpy(tracker.local_ip, localhost.get(), sizeof(tracker.local_ip));
     }
     else {
-        GetLocalIp(local_ip);
+        GetLocalIp(tracker.local_ip);
     }
-    NginxInit(nginx);
+    NginxInit(tracker.nginx);
+    int write_db = GetIntValFromJson(params, "write_db");
+    if(write_db == 1) {
+        tracker.db = new DbParams(NULL);
+    }
 
     return 0;
 }
 
 extern "C" IHandle TrackerStart(int channel, char* params) {
     int fps = 25;
-    TrackerParams* tracker = new TrackerParams();
-    tracker->id = channel;
-    tracker->btrack = new BYTETracker(fps, 30);
-    return tracker;
+    ModuleObj* obj = new ModuleObj();
+    obj->id = channel;
+    obj->btrack = new BYTETracker(fps, 30);
+    return obj;
 }
 
 extern "C" int TrackerProcess(IHandle handle, TensorData* data) {
-    TrackerParams* tracker = (TrackerParams* )handle;
+    ModuleObj* obj = (ModuleObj* )handle;
     auto pkt = data->tensor_buf.input[0];
     auto rgb = data->tensor_buf.input[1];
     int num = (int)pkt->_size/sizeof(DetectionResult);
@@ -257,31 +268,38 @@ extern "C" int TrackerProcess(IHandle handle, TensorData* data) {
         _det.prob = det[i].score;
         objects.push_back(_det);
     }
-    vector<STrack> output_stracks = tracker->btrack->update(objects);
-    auto json = TrackCapture(output_stracks, tracker, pkt, rgb);
+    vector<STrack> output_stracks = obj->btrack->update(objects);
+    auto json = TrackCapture(output_stracks, obj, pkt, rgb);
     if(json != nullptr) {
         HeadParams params = {0};
         params.frame_id = pkt->_params.frame_id;
         auto _packet = new Packet(json.get(), strlen(json.get())+1, &params);
         data->tensor_buf.output = _packet;
+        if(tracker.db) {
+            tracker.db->DBInsert("capture", json.get());
+        }
     }
     return 0;
 }
 
 extern "C" int TrackerStop(IHandle handle) {
-    TrackerParams* tracker = (TrackerParams* )handle;
-    if(tracker == NULL) {
-        AppWarn("tracker is null");
+    ModuleObj* obj = (ModuleObj* )handle;
+    if(obj == NULL) {
+        AppWarn("obj is null");
         return -1;
     }
-    if(tracker->btrack != NULL) {
-        delete tracker->btrack;
+    if(obj->btrack != NULL) {
+        delete obj->btrack;
     }
-    delete tracker;
+    delete obj;
     return 0;
 }
 
 extern "C" int TrackerRelease(void) {
+    if(tracker.db) {
+        delete tracker.db;
+        tracker.db = NULL;
+    }
     return 0;
 }
 

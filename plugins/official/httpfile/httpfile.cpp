@@ -39,6 +39,7 @@ typedef struct {
     std::queue<Packet*> _queue;
     int queue_len_max;
     std::thread* t;
+    std::string task_name;
     int port;
     int thread_num;
     int timeout_sec;
@@ -319,10 +320,10 @@ static void HttpRequest(struct evhttp_request* req, void* arg) {
     char boundary[256], url[URL_LEN] = {0};
     HttpFilee http_file = {0};
 
-    if(req->remote_host != NULL) {
-        const char* uri = (char* )evhttp_request_get_uri(req);
-        printf("recv a httpfile request, uri:%s, remote:%s\n", uri, req->remote_host);
-    }
+    //if(req->remote_host != NULL) {
+    //    const char* uri = (char* )evhttp_request_get_uri(req);
+    //    printf("recv a httpfile request, uri:%s, remote:%s\n", uri, req->remote_host);
+    //}
     int cmd = evhttp_request_get_command(req); 
     if(cmd != EVHTTP_REQ_POST) {
         printf("warning, http req cmd is not post, %d\n", cmd);
@@ -384,17 +385,15 @@ static void *DispatchThread(void* arg) {
 }
 
 static int StartServer(HttpServer* http) {
-    const char* url[] = {
-        "/file-resnet50",
-        "/file-yolov3",
-    };
     int fd = HttpBindSocket(http->port);
     if(fd < 0) {
         AppError("bind socket failed, port:%d", http->port);
         return -1;
     }
+    LibevntInit();
+
     pthread_t pid[http->thread_num];
-    evthread_use_pthreads();
+    std::string url = "/file-" + http->task_name;
     HttpParams* http_params = (HttpParams* )calloc(http->thread_num, sizeof(HttpParams));
     for(int i = 0; i < http->thread_num; i++) {
         struct event_base* base = event_init();
@@ -413,9 +412,7 @@ static int StartServer(HttpServer* http) {
             return -1;
         }
         http_params[i].http = http;
-        for(size_t j = 0; j < sizeof(url)/sizeof(const char*); j ++) {
-            evhttp_set_cb(httpd, url[j], HttpRequest, http_params + i);
-        }
+        evhttp_set_cb(httpd, url.c_str(), HttpRequest, http_params + i);
         if(pthread_create(&pid[i], NULL, DispatchThread, base) != 0) {
             AppError("create dispatch thread failed");
         }
@@ -423,7 +420,7 @@ static int StartServer(HttpServer* http) {
             pthread_detach(pid[i]);
         }
     }
-    AppDebug("threads:%d, http://ip:%d/file listen ...", http->thread_num, http->port);
+    AppDebug("threads:%d, http://ip:%d%s listen ...", http->thread_num, http->port, url.c_str());
 
     return 0;
 }
@@ -444,12 +441,14 @@ extern "C" IHandle HttpStart(int channel, char* params) {
         http->timeout_sec /= 3;
     }
     http->queue_len_max = http->queue_len_max > 0 ? http->queue_len_max : 50;
+    auto task = GetStrValFromJson(params, "task");
     http->port = GetIntValFromJson(params, "port");
     http->thread_num = GetIntValFromJson(params, "threads");
-    if(http->port < 0 || http->thread_num < 0) {
-        AppWarn("id:%d, get port/threads from params failed", channel);
+    if(task == nullptr || http->port < 0 || http->thread_num < 0) {
+        AppWarn("id:%d, get httpfile params failed", channel);
         return NULL;
     }
+    http->task_name = task.get();
     http->running = 1;
     StartServer(http);
     return http;

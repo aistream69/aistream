@@ -275,6 +275,14 @@ void TaskThread::ThreadFunc(void) {
     assert(obj != nullptr);
     MediaServer* media = obj->media;
 
+    for(size_t i = 0; i < t_ele_vec.size(); i ++) {
+        auto ele = t_ele_vec[i];
+        if(!ele->Start()) {
+            task->running = 0;
+            break;
+        }
+    }
+
     while(task->running) {
         for(size_t i = 0; i < t_ele_vec.size(); i ++) {
             TensorData tensor;
@@ -329,13 +337,6 @@ void TaskThread::ThreadFunc(void) {
 
 void TaskThread::Start(std::shared_ptr<TaskParams> _task) {
     task = _task;
-    for(size_t i = 0; i < t_ele_vec.size(); i ++) {
-        auto ele = t_ele_vec[i];
-        if(!ele->Start()) {
-            task->running = 0;
-            break;
-        }
-    }
     t = new std::thread(&TaskThread::ThreadFunc, shared_from_this());
 }
 

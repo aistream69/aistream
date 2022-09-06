@@ -23,8 +23,8 @@
 <script>
 	import headTop from '../components/headTop'
 	import tendency from '../components/tendency' 
-	import dtime from 'time-formater'
 	import {getAdminInfo} from '@/api/getData'
+	let dtime = require('silly-datetime');
     export default {
     	data(){
     		return {
@@ -45,17 +45,15 @@
     	mounted(){
     		this.initData();
     		for (let i = 6; i > -1; i--) {
-    			const date = dtime(new Date().getTime() - 86400000*i).format('YYYY-MM-DD')
-    			this.sevenDay.push(date)
+                const _date = dtime.format(new Date().getTime() - 86400000*i, 'YYYY-MM-DD');
+    			this.sevenDay.push(_date)
     		}
     		this.getSevenData();
     	},
         computed: {
-
         },
     	methods: {
     		async initData(){
-    			const today = dtime().format('YYYY-MM-DD')
     			Promise.all([getAdminInfo])
     			.then(res => {
     				//this.userCount = res[0].count;

@@ -158,7 +158,7 @@
  * @apiVersion 0.1.0
  * @apiDescription 详细描述
  * @apiBody {String}   [comment]       注: file类型比较特殊，文件上传后，可以直接关联模型进行推理,
- *                                         上传url由[4.01 任务支持查询]获取,如/api/task/support?obj=img
+ *                                         上传url由[5.01 任务支持查询]获取,如/api/task/support?obj=img
  * @apiBody {String}   [comment]       使用示例:curl -F "head={\"filesize\":123,\"userdata\":{}}" 
  *                                              -F "file=@/tmp/test.jpg" http://ip:port/file-resnet50
  * @apiSuccessExample {json} mq输出推理结果样例:
@@ -222,7 +222,7 @@
  * @apiVersion 0.1.0
  * @apiDescription 详细描述
  * @apiBody    {int}       id          设备ID
- * @apiBody    {String}    task        任务名称,由[4.01 任务支持查询]获取
+ * @apiBody    {String}    task        任务名称,由[5.01 任务支持查询]获取
  * @apiBody    {String}    params      任务携带参数
  * @apiParamExample {json} 请求样例：
  *                          {
@@ -261,7 +261,78 @@
  */
 
  /**
- * @api {GET} /api/task/support 4.01 任务支持查询
+ * @api {POST} /api/data/query 4.01 数据查询
+ * @apiGroup Data
+ * @apiVersion 0.1.0
+ * @apiDescription 详细描述
+ * @apiBody    {String} type            数据类型，默认为"capture"
+ * @apiBody    {int}    start_time      开始时间(timestamp,秒)
+ * @apiBody    {int}    stop_time       停止时间(timestamp,秒)
+ * @apiBody    {int}    id              设备id
+ * @apiBody    {int}    [skip]          可选，跳过多少条，如果参数不存在，取所有
+ * @apiBody    {int}    [limit]         可选，每次返回数目，如果参数不存在，取所有
+ * @apiBody    {int}    [need_count]    可选，1:返回值携带总数目total字段，0:不返回total，
+ *                                              尽量置0，减少查询压力
+ * @apiParamExample {json} 请求样例：
+ *                          {
+ *                              "type": "capture",
+ *                              "start_time": 1661863316,
+ *                              "stop_time":  1661863378,
+ *                              "id":         [91,92],
+ *                              "skip":       40,
+ *                              "limit":      2,
+ *                              "need_count": 1
+ *                          }
+ * @apiSuccess (200) {int}      code    0:成功 1:失败
+ * @apiSuccess (200) {String}   msg     信息
+ * @apiSuccessExample {json} 返回样例:
+ *    {
+ *        "code":0,
+ *        "msg":"success",
+ *        "data":{
+ *            "total":        163,
+ *            "capture":      [
+ *                {
+ *                    "id":   91,
+ *                    "timestamp":    1662362188,
+ *                    "sceneimg":     {
+ *                        "url":  "http://10.0.4.15:8080/image/20220905/91/xxxx_0_scene.jpg"
+ *                    },
+ *                    "object":       [
+ *                        "type": "face",
+ *                        "trackid":      72,
+ *                        "x":    419,
+ *                        "y":    311,
+ *                        "w":    156,
+ *                        "h":    182,
+ *                        "url":  "http://10.0.4.15:8080/image/20220905/91/xxxx_0_obj.jpg"
+ *                    ],
+ *                    "name": "研发D栋2楼"
+ *                },
+ *                {
+ *                    "id":   92,
+ *                    "timestamp":    1662362198,
+ *                    "sceneimg":     {
+ *                        "url":  "http://10.0.4.15:8080/image/20220905/92/xxxx_0_scene.jpg"
+ *                    },
+ *                    "object":       [
+ *                        "type": "face",
+ *                        "trackid":      33,
+ *                        "x":    509,
+ *                        "y":    277,
+ *                        "w":    166,
+ *                        "h":    199,
+ *                        "url":  "http://10.0.4.15:8080/image/20220905/92/xxxx_0_obj.jpg"
+ *                    ],
+ *                    "name": "研发D栋3楼"
+ *                }
+ *            ]
+ *        }
+ *    }
+ */
+
+ /**
+ * @api {GET} /api/task/support 5.01 任务支持查询
  * @apiGroup HttpGet
  * @apiVersion 0.1.0
  * @apiDescription 详细描述
@@ -312,7 +383,7 @@
  */
 
  /**
- * @api {GET} /api/system/get/info 4.02 系统信息查询
+ * @api {GET} /api/system/get/info 5.02 系统信息查询
  * @apiGroup HttpGet
  * @apiVersion 0.1.0
  * @apiDescription 详细描述
@@ -342,7 +413,7 @@
  */
 
  /**
- * @api {GET} /api/system/slave/status 4.03 集群服务器状态查询
+ * @api {GET} /api/system/slave/status 5.03 集群服务器状态查询
  * @apiGroup HttpGet
  * @apiVersion 0.1.0
  * @apiDescription 详细描述
@@ -369,7 +440,26 @@
  */
 
  /**
- * @api {GET} /api/obj/status 4.04 设备状态查询
+ * @api {GET} /api/obj/id/all 5.04 获取所有设备ID
+ * @apiGroup HttpGet
+ * @apiVersion 0.1.0
+ * @apiDescription 详细描述
+ * @apiBody {String}   [comment]       无
+ * @apiSuccess (200) {int}      code            0:成功 1:失败
+ * @apiSuccess (200) {String}   msg             信息
+ * @apiSuccess (200) {String}   data            系统信息
+ * @apiSuccessExample {json} 返回样例:
+ *                          {
+ *                              "code":0,
+ *                              "msg":"success",
+ *                              "data":{
+ *                                  "obj":  [3, 4, 5]
+ *                              }
+ *                          }
+ */
+
+ /**
+ * @api {GET} /api/obj/status 5.05 设备状态查询
  * @apiGroup HttpGet
  * @apiVersion 0.1.0
  * @apiDescription 详细描述
@@ -420,7 +510,7 @@
  */
 
  /**
- * @api {OUT} /mq/output 5.01 输出结果
+ * @api {OUT} /mq/output 6.01 输出结果
  * @apiGroup Output
  * @apiVersion 0.1.0
  * @apiDescription 详细描述

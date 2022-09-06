@@ -222,8 +222,13 @@ static auto MAddObj(char* buf, MasterParams* master) {
     obj->id = GetIntValFromJson(buf, "id");
     obj->params = std::make_unique<char[]>(strlen(buf)+1);
     strcpy(obj->params.get(), buf);
+    auto name = GetStrValFromJson(buf, "name");
+    if(name != nullptr) {
+        strncpy(obj->name, name.get(), sizeof(obj->name));
+    }
     master->m_obj_mtx.lock();
     master->m_obj_vec.push_back(obj);
+    master->id_name[obj->id] = obj->name;
     master->m_obj_mtx.unlock();
     return obj;
 }
@@ -365,10 +370,10 @@ static int ObjCB(char* buf, void* arg) {
     MediaServer *media = (MediaServer *)arg;
     MasterParams* master = media->GetMaster();
 
-    auto _buf = DelJsonObj(buf, "_id");
-    if(_buf != nullptr) {
-        buf = _buf.get();
-    }
+    //auto _buf = DelJsonObj(buf, "_id");
+    //if(_buf != nullptr) {
+    //    buf = _buf.get();
+    //}
     // add obj
     auto obj = MAddObj(buf, master);
     if(obj == nullptr) {
@@ -412,7 +417,7 @@ void request_gencb(struct evhttp_request* req, void* arg) {
 
     if(req->remote_host != NULL) {
         strncpy(remote_ip, req->remote_host, sizeof(remote_ip));
-        printf("http request, url:%s, remote:%s\n", uri, remote_ip);
+        //printf("http request, url:%s, remote:%s\n", uri, remote_ip);
     }
     int cmd = evhttp_request_get_command(req); 
     if(cmd != EVHTTP_REQ_GET) {
@@ -923,6 +928,33 @@ static void request_system_info(struct evhttp_request* req, void* arg) {
     cJSON_Delete(root);
 }
 
+static void request_obj_all_id(struct evhttp_request* req, void* arg) {
+    request_first_stage;
+    CommonParams* params = (CommonParams* )arg;
+    char** ppbody = (char** )params->argb;
+    Restful* rest = (Restful* )params->argc;
+    MediaServer* media = rest->media;
+    MasterParams* master = media->GetMaster();
+
+    // create ack json base
+    cJSON* root = cJSON_CreateObject();
+    cJSON* data_root =  cJSON_CreateObject();
+    cJSON* obj_root =  cJSON_CreateArray();
+    cJSON_AddStringToObject(root, "code", "0");
+    cJSON_AddStringToObject(root, "msg", "success");
+    cJSON_AddItemToObject(root, "data", data_root);
+    cJSON_AddItemToObject(data_root, "obj", obj_root);
+    master->m_obj_mtx.lock();
+    for(size_t i = 0; i < master->m_obj_vec.size(); i++) {
+        auto _obj = master->m_obj_vec[i];
+        cJSON_AddItemToArray(obj_root, cJSON_CreateNumber(_obj->id));
+    }
+    master->m_obj_mtx.unlock();
+    // output json
+    *ppbody = cJSON_Print(root);
+    cJSON_Delete(root);
+}
+
 static void request_obj_status(struct evhttp_request* req, void* arg) {
     request_first_stage;
     CommonParams* params = (CommonParams* )arg;
@@ -1071,6 +1103,120 @@ static void request_slave_status(struct evhttp_request* req, void* arg) {
     cJSON_Delete(root);
 }
 
+static int QueryCB(char* buf, void* arg) {
+    cJSON* root, * _data, *id_root;
+    CommonParams* p = (CommonParams* )arg;
+    cJSON* array_root = (cJSON* )p->arga;
+    MasterParams* master = (MasterParams* )p->argb;
+
+    root = cJSON_Parse(buf);
+    if(root == NULL) {
+        printf("parse json failed, buf:%s\n", buf);
+        goto end;
+    }
+    _data = cJSON_GetObjectItem(root, "data");
+    if(_data == NULL) {
+        printf("get data json failed, buf:%s\n", buf);
+        goto end;
+    }
+    id_root = cJSON_GetObjectItem(_data, "id");
+    if(id_root == NULL) {
+        printf("get id failed, buf:%s\n", buf);
+        goto end;
+    }
+    {
+        int id = id_root->valueint;
+        master->m_obj_mtx.lock();
+        auto itr = master->id_name.find(id);
+        if(itr != master->id_name.end()) {
+            auto name = master->id_name[id];
+            cJSON_AddStringToObject(_data, "name", name.c_str());
+        }
+        master->m_obj_mtx.unlock();
+    }
+    cJSON_AddItemToArray(array_root, _data);
+    return 0;
+
+end:
+    if(root != NULL) {
+        cJSON_Delete(root);
+    }
+    return 0;
+}
+
+/**********************************************************
+{
+  "type":       "capture",
+  "start_time": 1661863316,
+  "stop_time":  1661863378,
+  "id":         [91,92],
+  "skip":       40,         # optional
+  "limit":      20,         # optional
+  "need_count": 1           # optional, 1:return total, 0:don't return total
+} 
+**********************************************************/
+static void request_query_data(struct evhttp_request* req, void* arg) {
+    request_first_stage;
+    CommonParams* params = (CommonParams* )arg;
+    char* buf = (char* )params->arga;
+    char** ppbody = (char** )params->argb;
+    Restful* rest = (Restful* )params->argc;
+    MediaServer* media = rest->media;
+    DbParams* db = media->GetDB();
+    MasterParams* master = media->GetMaster();
+
+    // parse query params
+    int size = 0;
+    std::vector<int> id_vec;
+    auto type = GetStrValFromJson(buf, "type");
+    int start_time = GetIntValFromJson(buf, "start_time");
+    int stop_time = GetIntValFromJson(buf, "stop_time");
+    int skip = GetIntValFromJson(buf, "skip");
+    int limit = GetIntValFromJson(buf, "limit");
+    int need_count = GetIntValFromJson(buf, "need_count");
+    auto array = GetArrayBufFromJson(buf, size, "id");
+    if(type == nullptr || start_time < 0 || 
+       stop_time < 0 || array == nullptr || size == 0) {
+        CheckErrMsg("get query params failed", ppbody);
+        return;
+    }
+    for(int i = 0; i < size; i++) {
+        auto arrbuf = GetBufFromArray(array.get(), i);
+        if(arrbuf == NULL) {
+            continue;
+        }
+        int id = atoi(arrbuf.get());
+        if(id >= 0) {
+            id_vec.push_back(id);
+        }
+    }
+    // make json
+    cJSON* root = cJSON_CreateObject();
+    cJSON* data_root =  cJSON_CreateObject();
+    cJSON* array_root =  cJSON_CreateArray();
+    cJSON_AddStringToObject(root, "code", "0");
+    cJSON_AddStringToObject(root, "msg", "success");
+    cJSON_AddItemToObject(root, "data", data_root);
+    cJSON_AddItemToObject(data_root, type.get(), array_root);
+    // query from db
+    CommonParams p;
+    p.arga = array_root;
+    p.argb = master;
+    if(need_count == 1) {
+        int64_t count = 0;
+        db->DBQuery(type.get(), start_time, stop_time, id_vec, 
+                    skip, limit, &count, &p, QueryCB);
+        cJSON_AddNumberToObject(data_root, "total", count);
+    }
+    else {
+        db->DBQuery(type.get(), start_time, stop_time, id_vec, 
+                    skip, limit, NULL, &p, QueryCB);
+    }
+    // output json
+    *ppbody = cJSON_Print(root);
+    cJSON_Delete(root);
+}
+
 static UrlMap rest_url_map[] = {
     // HTTP POST
     {"/api/system/login",       request_login},
@@ -1081,14 +1227,16 @@ static UrlMap rest_url_map[] = {
     {"/api/system/slave/del",   request_del_slave},
     {"/api/obj/add/rtsp",       request_add_rtsp},
     {"/api/obj/add/rtmp",       request_add_rtmp},
+    {"/api/obj/del",            request_del_obj},
     {"/api/task/start",         request_start_task},
     {"/api/task/stop",          request_stop_task},
-    {"/api/obj/del",            request_del_obj},
+    {"/api/data/query",         request_query_data},
     // HTTP GET
     {"/api/task/support",       request_task_support},
     {"/api/admin/info",         request_admin_info},
     {"/api/system/get/info",    request_system_info},
     {"/api/obj/status",         request_obj_status},
+    {"/api/obj/id/all",         request_obj_all_id},
     {"/api/system/slave/status",request_slave_status},
     {NULL, NULL}
 };
@@ -1292,9 +1440,9 @@ void MasterParams::ObjThread(void) {
 void MasterParams::Start(void) {
     DbParams* db = media->GetDB();
     sleep(3); // wait slave restful start ok
-    db->DbTraverse("system", media, SystemInitCB);
-    db->DbTraverse("slave", media, SlaveCB);
-    db->DbTraverse("obj", media, ObjCB);
+    db->DBTraverse("system", media, SystemInitCB);
+    db->DBTraverse("slave", media, SlaveCB);
+    db->DBTraverse("obj", media, ObjCB);
     std::thread t1(&MasterParams::SlaveThread, this);
     t1.detach();
     std::thread t2(&MasterParams::ObjThread, this);

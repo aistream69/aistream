@@ -251,20 +251,18 @@ void ConvertYUV2RGB(unsigned char *src0,unsigned char *src1,unsigned char *src2,
 
 void RGBInit(void) {
     static int init = 0;
-    if(!init) {
+    if(__sync_add_and_fetch(&init, 1) == 1) {
         InitLookupTable();
         InitConvertTable();
-        init = 1;
     }
 }
 
 void FFmpegInit(void) {
     static int init = 0;
-    if(!init) {
+    if(__sync_add_and_fetch(&init, 1) == 1) {
         avcodec_register_all();
         av_register_all();
         av_log_set_level(AV_LOG_FATAL);
-        init = 1;
     }
 }
 

@@ -1,5 +1,4 @@
 {
-    "batch_size": 1,
     "pipeline": [
         {
             "name": "object",

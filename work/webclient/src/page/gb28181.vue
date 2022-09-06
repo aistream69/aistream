@@ -201,7 +201,7 @@
                     }catch(err){
                         this.$message({
                             type: 'error',
-                            message: err.message
+                            message: err
                         });
                         console.log('启动算法失败')
                     }
@@ -230,7 +230,7 @@
                 }catch(err){
                     this.$message({
                         type: 'error',
-                        message: err.message
+                        message: err
                     });
                     console.log('停止算法失败')
                 }
@@ -258,7 +258,7 @@
                 }catch(err){
                     this.$message({
                         type: 'error',
-                        message: err.message
+                        message: err
                     });
                     console.log('删除失败')
                 }

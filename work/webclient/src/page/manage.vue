@@ -17,10 +17,14 @@
 						<!--el-menu-item index="audioDevice">音频</el-menu-item-->
 					</el-submenu>
 					<el-submenu index="4">
+						<template slot="title"><i class="el-icon-setting"></i>数据管理</template>
+						<el-menu-item index="query">查询</el-menu-item>
+					</el-submenu>
+					<el-submenu index="5">
 						<template slot="title"><i class="el-icon-setting"></i>集群管理</template>
 						<el-menu-item index="server">服务器</el-menu-item>
 					</el-submenu>
-					<el-submenu index="5">
+					<el-submenu index="6">
 						<template slot="title"><i class="el-icon-setting"></i>系统管理</template>
 						<el-menu-item index="output">输出配置</el-menu-item>
 						<el-menu-item index="userManage">用户管理</el-menu-item>

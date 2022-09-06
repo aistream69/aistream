@@ -23,6 +23,7 @@
         "nginx_path": "/usr/local/nginx",
         "db": {
             "type": "mongodb",
+            "name": "aistream",
             "host": "127.0.0.1",
             "port": 27017,
             "user": "admin",

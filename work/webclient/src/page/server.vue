@@ -163,7 +163,7 @@
                 }catch(err){
                     this.$message({
                         type: 'error',
-                        message: err.message
+                        message: err
                     });
                     console.log('删除失败')
                 }

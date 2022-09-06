@@ -160,7 +160,7 @@ static int MqSend(Rabbitmq& mq, char* buf) {
 
 extern "C" int MqInit(ElementData* data, char* params) {
     strncpy(data->input_name[0], "rabbitmq_input", sizeof(data->input_name[0]));
-    if(mq.init) {
+    if(__sync_add_and_fetch(&mq.init, 1) > 1) {
         return 0;
     }
     if(params == NULL) {
@@ -185,7 +185,6 @@ extern "C" int MqInit(ElementData* data, char* params) {
     strncpy(mq.exchange, exchange.get(), sizeof(mq.exchange));
     strncpy(mq.routingkey, routingkey.get(), sizeof(mq.routingkey));
     pthread_mutex_init(&mq.mtx, NULL);
-    mq.init = 1;
     return 0;
 }
 

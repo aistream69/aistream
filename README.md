@@ -1,5 +1,6 @@
 # aistream
-为算法工程化而设计
+AI中台+流媒体  
+算法模型快速集群工程化解决方案
 ****
 
 ## 架构
@@ -27,12 +28,15 @@
     * 一切插件化，高度可扩展性，可复用性，像搭积木一样开发产品，避免牵一发而动全身，快速满足用户多样性需求
 * [视频预览](#文本)
     * 支持hls/http-flv/webrtc
+* [数据管理](#文本)
+    * 存储：结构化数据，图片数据，视频数据等
+    * 查询：timestamp/id/skip/limit组合
 * [集群](#文本)
     * 支持master/slave模式，自动负载均衡，无限扩展
     * 每个slave支持GPU一机多卡
     * 支持数据库参数持久化，用户只需要通过RESTful APIs配置一次，重启自动运行任务
 * [客户端](#文本)
-    * 提供一个基于vue框架的web client，支持实时视频预览、实时抓拍、图片识别、设备管理、任务管理、数据查询、集群管理等基本功能
+    * 提供一个基于vue框架的web client，支持视频预览、实时抓拍、图片推理、设备管理、任务管理、数据查询、集群管理等功能
 
 ## 测试步骤
 ### 1. 下载第三方依赖包
@@ -45,9 +49,7 @@
     cmake ..
     make
 ### 3. 运行
-    首先搭建rabbitmq服务器(假如IP为10.1.1.3)，如果没有可修改samples/face_detection.json把插件节点rabbitmq删除即可。
-    启动服务: 
-        ./aistream
+    ./aistream
 ### 4. Sample测试 -- 人脸检测/跟踪/抓拍
 #### 流程图
 ![add image](doc/img/face_capture_diagram.png)
@@ -113,8 +115,19 @@
     mongod --config ./mongod.conf --shutdown
     "用户名/密码"认证模式启动db server:
     mongod --config ./mongod.conf --auth
-### 3. 备注
+### 3. rabbitmq
+#### 安装
+    结构化数据输出依赖rabbitmq-server，请自行安装.
+#### 初始化配置
+    rabbitmq-server -detached
+    rabbitmq-plugins enable rabbitmq_management
+    rabbitmq-plugins enable rabbitmq_web_stomp
+    rabbitmq-plugins enable rabbitmq_web_stomp_examples
+    rabbitmqctl add_user admin admin
+    rabbitmqctl set_permissions -p / admin ".*" ".*" ".*"
+    rabbitmqctl set_user_tags admin administrator
+### 4. 备注
 #### 多输入
-    如果模块有多个input，则input[0]需要连接到较慢的那个，参考samples/face_detection.json，tracker_input1必须连接到obj(目标检测，输入为rgb，且检测结果可能为0)，而不是rgb(每帧都有有效数据).
+    如果模块有多个input，则input[0]需要连接到较慢的那个，参考samples/face_detection.json，  
+    tracker_input1必须连接到obj(目标检测，输入为rgb，且检测结果可能为0)，而不是rgb(每帧都有有效数据).
     
-

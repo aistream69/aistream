@@ -31,7 +31,11 @@
                           </el-select>
                       </el-form-item>
                       <el-form-item label="视频录像" style="white-space: nowrap;">
-                          <el-switch on-text="" off-text="" v-model="props.row.recordEnable" disabled></el-switch>
+                          <el-switch 
+                            on-text="" 
+                            off-text="" 
+                            v-model="props.row.recordEnable" disabled>
+                          </el-switch>
                       </el-form-item>
                     </el-form>
                   </template>
@@ -231,7 +235,7 @@
                 }catch(err){
                     this.$message({
                         type: 'error',
-                        message: err.message
+                        message: err
                     });
                     console.log('启动失败')
                 }
@@ -254,7 +258,7 @@
                 }catch(err){
                     this.$message({
                         type: 'error',
-                        message: err.message
+                        message: err
                     });
                     console.log('停止失败')
                 }
@@ -277,7 +281,7 @@
                 }catch(err){
                     this.$message({
                         type: 'error',
-                        message: err.message
+                        message: err
                     });
                     console.log('删除失败')
                 }

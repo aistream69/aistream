@@ -41,6 +41,7 @@ int ReadFile(const char *filename, void *buf, int size);
 int ReadFile2(const char *filename, void *buf, int max);
 int WriteFile(const char *filename, void *buf, int size, const char *mode);
 int GetFileSize(const char *filename);
+void LibevntInit(void);
 int GetIntValFromJson(char *buf, 
         const char *name1, const char *name2=NULL, const char *name3=NULL);
 int GetIntValFromFile(const char *filename, 

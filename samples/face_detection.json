@@ -1,5 +1,4 @@
 {
-    "batch_size": 1,
     "pipeline": [
         {
             "name": "object",
@@ -78,7 +77,8 @@
                 }
             ],
             "params": {
-              "capture_line": 0.66
+              "capture_line": 0.66,
+              "write_db": 1
             }
         },
         {

@@ -22,6 +22,7 @@
 #include <memory>
 #include <vector>
 #include <mutex>
+#include <map>
 
 #define SLAVE_LOAD_MAX  99
 
@@ -65,6 +66,7 @@ public:
         status = 0;
         params = nullptr;
         slave = nullptr;
+        memset(name, 0, sizeof(name));
     }
     ~MObjParam(void) {
     }
@@ -73,6 +75,7 @@ public:
     std::unique_ptr<char[]> GetTask(void);
     int id;
     int status;
+    char name[256];
     std::mutex m_task_mtx;
     std::vector<std::string> m_task_vec;
     std::unique_ptr<char[]> params;
@@ -91,6 +94,7 @@ public:
     std::vector<std::shared_ptr<SlaveParam>> m_slave_vec;
     std::mutex m_obj_mtx;
     std::vector<std::shared_ptr<MObjParam>> m_obj_vec;
+    std::map<int, std::string> id_name;
     std::unique_ptr<char[]> output;
     std::vector<TaskCfg> cfg_task_vec;
     char user[256];

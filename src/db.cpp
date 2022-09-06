@@ -33,11 +33,13 @@ DbParams::~DbParams(void) {
 int DbParams::DBOpen(void) {
     handle = nullptr;
     auto type = GetStrValFromFile(CONFIG_FILE, "system", "db", "type");
+    auto name = GetStrValFromFile(CONFIG_FILE, "system", "db", "name");
     auto host = GetStrValFromFile(CONFIG_FILE, "system", "db", "host");
     int port = GetIntValFromFile(CONFIG_FILE, "system", "db", "port");
     auto user = GetStrValFromFile(CONFIG_FILE, "system", "db", "user");
     auto password = GetStrValFromFile(CONFIG_FILE, "system", "db", "password");
-    if(type == nullptr || host == nullptr || port < 0 || !strcmp(type.get(), "none")) {
+    if(type == nullptr || name == nullptr || host == nullptr 
+                || port < 0 || !strcmp(type.get(), "none")) {
         printf("db disabled\n");
         return 0;
     }
@@ -45,6 +47,7 @@ int DbParams::DBOpen(void) {
         AppWarn("unsupport db type : %s", type.get());
         return -1;
     }
+    strncpy(db_name, name.get(), sizeof(db_name));
 
     bson_error_t error;
     char url[512] = {0};
@@ -60,7 +63,7 @@ int DbParams::DBOpen(void) {
     strncat(url, ":", sizeof(url)-strlen(url)-1);
     snprintf(url+strlen(url), sizeof(url)-strlen(url)-1, "%d", port);
     strncat(url, "/", sizeof(url)-strlen(url)-1);
-    strncat(url, DB_NAME, sizeof(url)-strlen(url)-1);
+    strncat(url, db_name, sizeof(url)-strlen(url)-1);
 
     mongoc_init();
     MongodbParams *p = (MongodbParams *)calloc(1, sizeof(MongodbParams));
@@ -121,18 +124,18 @@ static bson_t* BconNewUpdateJson(const char* cmd, const char* select, const char
     return update;
 }
 
-static int _DBUpdate(DBHandle handle, const char* table, 
-        char* json, bson_t* selector, const char* cmd, bool upsert) {
+static int _DBUpdate(DBHandle handle, const char*name, const char* table, 
+                char* json, bson_t* selector, const char* cmd, bool upsert) {
     bson_error_t error;
     mongoc_collection_t* collection = NULL;
     bson_t *insert = NULL, *update = NULL, *opts = NULL;
     MongodbParams* p = (MongodbParams* )handle;
 
-    if(p == nullptr) {
+    if(p == NULL) {
         goto end;
     }
     opts = BCON_NEW ("upsert", BCON_BOOL(upsert));
-    collection = mongoc_client_get_collection(p->client, DB_NAME, table);
+    collection = mongoc_client_get_collection(p->client, name, table);
     if(collection == NULL) {
         AppError("get collection failed, %s", table);
         goto end;
@@ -169,18 +172,18 @@ end:
     return 0;
 }
 
-static int _DBUpdate2(DBHandle handle, const char *table, 
-                      bson_t *selector, bson_t *update, bool upsert) {
+static int _DBUpdate2(DBHandle handle, const char*name, const char *table, 
+                            bson_t *selector, bson_t *update, bool upsert) {
     bson_error_t error;
     bson_t *opts = NULL;
     mongoc_collection_t *collection = NULL;
     MongodbParams *p = (MongodbParams *)handle;
 
-    if(p == nullptr) {
+    if(p == NULL) {
         goto end;
     }
     opts = BCON_NEW ("upsert", BCON_BOOL(upsert));
-    collection = mongoc_client_get_collection(p->client, DB_NAME, table);
+    collection = mongoc_client_get_collection(p->client, name, table);
     if(collection == NULL) {
         AppError("get collection failed, %s", table);
         goto end;
@@ -201,6 +204,90 @@ end:
     return 0;
 }
 
+DBTable DbParams::DBCreateTable(const char* table) {
+    MongodbParams* p = (MongodbParams* )handle;
+    if(p != NULL) {
+        return mongoc_client_get_collection(p->client, db_name, table);
+    }
+    else {
+        return NULL;
+    }
+}
+
+int DbParams::DBDestroyTable(DBTable table) {
+    mongoc_collection_t* collection = (mongoc_collection_t* )table;
+    if(collection != NULL) {
+        mongoc_collection_destroy(collection);
+    }
+    return 0;
+}
+
+int DbParams::DBInsert(DBTable table, char* json) {
+    bson_error_t error;
+    bson_t *insert = NULL;
+    MongodbParams* p = (MongodbParams* )handle;
+    mongoc_collection_t* collection = (mongoc_collection_t* )table;
+
+    if(p == NULL) {
+        goto end;
+    }
+    insert = bson_new_from_json((const uint8_t *)json, -1, &error);
+    if(insert == NULL) {
+        AppError("bson from json failed, %s, %s", json, error.message);
+        goto end;
+    }
+    {
+        std::unique_lock<std::mutex> lock(mtx);
+        if(!mongoc_collection_insert_one(collection, insert, NULL, NULL, &error)) {
+           AppError("insert failed, %s, %s", json, error.message);
+           goto end;
+        }
+    }
+
+end:
+    if(insert != NULL) {
+        bson_destroy(insert);
+    }
+    return 0;
+}
+
+int DbParams::DBInsert(const char* table, char* json) {
+    bson_error_t error;
+    bson_t *insert = NULL;
+    mongoc_collection_t* collection = NULL;
+    MongodbParams* p = (MongodbParams* )handle;
+
+    if(p == NULL) {
+        goto end;
+    }
+    insert = bson_new_from_json((const uint8_t *)json, -1, &error);
+    if(insert == NULL) {
+        AppError("bson from json failed, %s, %s", json, error.message);
+        goto end;
+    }
+    {
+        std::unique_lock<std::mutex> lock(mtx);
+        collection = mongoc_client_get_collection(p->client, db_name, table);
+        if(collection == NULL) {
+            AppError("get collection failed, %s", table);
+            goto end;
+        }
+        if(!mongoc_collection_insert_one(collection, insert, NULL, NULL, &error)) {
+           AppError("insert failed, %s, %s, %s", table, error.message, json);
+           goto end;
+        }
+    }
+
+end:
+    if(insert != NULL) {
+        bson_destroy(insert);
+    }
+    if(collection != NULL) {
+        mongoc_collection_destroy(collection);
+    }
+    return 0;
+}
+
 int DbParams::DBUpdate(const char* table, char* json, const char* select, 
                        const char* val, const char* cmd, bool upsert) {
     bson_t* selector = BconNew(select, val);
@@ -208,7 +295,7 @@ int DbParams::DBUpdate(const char* table, char* json, const char* select,
         AppError("bson new selector failed, %s:%s", select, val);
         return -1;
     }
-    return _DBUpdate(handle, table, json, selector, cmd, upsert);
+    return _DBUpdate(handle, db_name, table, json, selector, cmd, upsert);
 }
 
 int DbParams::DBUpdate(const char* table, char* json, const char* select, 
@@ -218,7 +305,7 @@ int DbParams::DBUpdate(const char* table, char* json, const char* select,
         AppError("bson new selector failed, %s:%d", select, val);
         return -1;
     }
-    return _DBUpdate(handle, table, json, selector, cmd, upsert);
+    return _DBUpdate(handle, db_name, table, json, selector, cmd, upsert);
 }
 
 int DbParams::DBUpdate(const char* table, const char* select, int val, 
@@ -234,7 +321,7 @@ int DbParams::DBUpdate(const char* table, const char* select, int val,
         bson_destroy(selector);
         return -1;
     }
-    return _DBUpdate2(handle, table, selector, update, upsert);
+    return _DBUpdate2(handle, db_name, table, selector, update, upsert);
 }
 
 int DbParams::DBUpdate(const char* table, const char* select, int val, 
@@ -250,18 +337,18 @@ int DbParams::DBUpdate(const char* table, const char* select, int val,
         bson_destroy(selector);
         return -1;
     }
-    return _DBUpdate2(handle, table, selector, update, upsert);
+    return _DBUpdate2(handle, db_name, table, selector, update, upsert);
 }
 
-static int _DBDel(DBHandle handle, const char *table, bson_t *selector) {
+static int _DBDel(DBHandle handle, const char* name, const char *table, bson_t *selector) {
     bson_error_t error;
     mongoc_collection_t* collection = NULL;
     MongodbParams* p = (MongodbParams* )handle;
 
-    if(p == nullptr) {
+    if(p == NULL) {
         goto end;
     }
-    collection = mongoc_client_get_collection(p->client, DB_NAME, table);
+    collection = mongoc_client_get_collection(p->client, name, table);
     if(collection == NULL) {
         AppError("get collection failed, %s", table);
         goto end;
@@ -286,7 +373,7 @@ int DbParams::DBDel(const char* table, const char* select, const char* val) {
         AppError("bson new selector failed, %s:%s", select, val);
         return -1;
     }
-    return _DBDel(handle, table, selector);
+    return _DBDel(handle, db_name, table, selector);
 }
 
 int DbParams::DBDel(const char* table, const char* select, int val) {
@@ -296,27 +383,29 @@ int DbParams::DBDel(const char* table, const char* select, int val) {
         AppError("bson new selector failed, %s:%d", select, val);
         return -1;
     }
-    return _DBDel(handle, table, selector);
+    return _DBDel(handle, db_name, table, selector);
 }
 
-int DbParams::DbTraverse(const char* table, void* arg, int (*cb)(char* buf, void* arg)) {
+int DbParams::DBTraverse(const char* table, void* arg, int (*cb)(char* buf, void* arg)) {
     char* str;
     bson_t query;
     const bson_t* doc;
+    bson_t* opts = NULL;
     mongoc_cursor_t* cursor = NULL;
     mongoc_collection_t* collection = NULL;
     MongodbParams* p = (MongodbParams *)handle;
 
-    if(p == nullptr) {
+    if(p == NULL) {
         return 0;
     }
     bson_init(&query);
-    collection = mongoc_client_get_collection(p->client, DB_NAME, table);
+    opts = BCON_NEW("projection", "{", "_id", BCON_BOOL(false), "}");
+    collection = mongoc_client_get_collection(p->client, db_name, table);
     if(collection == NULL) {
         AppError("get collection failed, %s", table);
         goto end;
     }
-    cursor = mongoc_collection_find_with_opts(collection, &query, NULL, NULL);
+    cursor = mongoc_collection_find_with_opts(collection, &query, opts, NULL);
     while(mongoc_cursor_next(cursor, &doc)) {
         str = bson_as_json(doc, NULL);
         if(cb != NULL) {
@@ -331,13 +420,85 @@ end:
     if(collection != NULL) {
         mongoc_collection_destroy(collection);
     }
+    if(opts != NULL) {
+        bson_destroy(opts);
+    }
     bson_destroy(&query);
+    return 0;
+}
+
+int DbParams::DBQuery(const char* table, int start_time, 
+                      int stop_time, std::vector<int> id_vec, 
+                      int skip, int limit, int64_t* count, 
+                      void* arg, int (*cb)(char* buf, void* arg)) {
+    char* str;
+    bson_t id;
+    const bson_t* doc;
+    bson_error_t error;
+    bson_t* query = NULL;
+    bson_t* opts = NULL;
+    mongoc_cursor_t* cursor = NULL;
+    mongoc_collection_t* collection = NULL;
+    MongodbParams* p = (MongodbParams *)handle;
+
+    if(p == NULL) {
+        return 0;
+    }
+    bson_init(&id);
+    for(size_t i = 0; i < id_vec.size(); i ++) {
+        BCON_APPEND(&id, "0", BCON_INT32(id_vec[i]));
+    }
+    query = BCON_NEW("data.timestamp", "{", 
+                     "$gte", BCON_INT32(start_time), 
+                     "$lte", BCON_INT32(stop_time), "}",
+                     "data.id", "{", "$in", BCON_ARRAY(&id), "}");
+    if(skip < 0 || limit < 0) {
+        opts = BCON_NEW("projection", "{", "_id", BCON_BOOL(false), "}");
+    }
+    else {
+        opts = BCON_NEW("projection", "{", "_id", BCON_BOOL(false), "}", 
+                        "skip", BCON_INT64(skip),
+                        "limit", BCON_INT64(limit));
+    }
+    collection = mongoc_client_get_collection(p->client, db_name, table);
+    if(collection == NULL) {
+        AppError("get collection failed, %s", table);
+        goto end;
+    }
+    if(count != NULL) {
+        *count = mongoc_collection_count_documents(collection, query, NULL, NULL, NULL, &error);
+        if(*count < 0) {
+            AppError("count failed, %s", error.message);
+        }
+    }
+    cursor = mongoc_collection_find_with_opts(collection, query, opts, NULL);
+    while(mongoc_cursor_next(cursor, &doc)) {
+        str = bson_as_json(doc, NULL);
+        if(cb != NULL) {
+            cb(str, arg);
+        }
+        bson_free(str);
+    }
+end:
+    if(cursor != NULL) {
+        mongoc_cursor_destroy(cursor);
+    }
+    if(collection != NULL) {
+        mongoc_collection_destroy(collection);
+    }
+    if(query != NULL) {
+        bson_destroy(query);
+    }
+    if(opts != NULL) {
+        bson_destroy(opts);
+    }
+    bson_destroy(&id);
     return 0;
 }
 
 int DbParams::DBClose(void) {
     MongodbParams* p = (MongodbParams* )handle;
-    if(p == nullptr) {
+    if(p == NULL) {
         return 0;
     }
     if(p->uri != NULL) {
@@ -351,3 +512,4 @@ int DbParams::DBClose(void) {
     handle = nullptr;
     return 0;
 }
+

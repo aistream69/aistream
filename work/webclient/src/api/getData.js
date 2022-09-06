@@ -67,10 +67,16 @@ export const getAlgSupport = data => fetch('/api/task/support', data);
  * 获取设备列表
  */
 export const getObjStatus = data => fetch('/api/obj/status', data);
+export const getObjAllId = data => fetch('/api/obj/id/all', data);
 
 /**
  * 删除设备
  */
 export const deleteObj = data => fetch('/api/obj/del', data, 'POST');
+
+/**
+ * 数据查询
+ */
+export const queryData = data => fetch('/api/data/query', data, 'POST');
 
 

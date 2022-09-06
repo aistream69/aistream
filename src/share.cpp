@@ -41,6 +41,11 @@
 #include <ctype.h>
 #include <execinfo.h>
 #include <memory>
+#include <event2/event.h>
+#include <event2/http.h>
+#include <event2/buffer.h>
+#include <event2/util.h>
+#include <event2/thread.h>
 #include "share.h"
 #include "cJSON.h"
 #include "log.h"
@@ -760,6 +765,13 @@ void HangUp(void) {
     AppWarn("hang up");
     while(1) {
         sleep(10);
+    }
+}
+
+void LibevntInit(void) {
+    static int init = 0;
+    if(__sync_add_and_fetch(&init, 1) == 1) {
+        evthread_use_pthreads();
     }
 }
 

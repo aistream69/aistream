@@ -122,6 +122,7 @@
                     this.algForm.push(algData);
                     if(this.task_select == '') {
                         this.task_select = item.name;
+                        this.task_url = this.http_file_url[item.name];
                     }
                 })
             },

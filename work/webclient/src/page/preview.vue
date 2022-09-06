@@ -4,7 +4,8 @@
         <div class="videoList">
               <el-form ref="form" label-width="50px">
                 <el-form-item label="设备">
-                  <el-select v-model="select" size="small" filterable placeholder="请选择" @change="startVideo">
+                  <el-select v-model="select" size="small" 
+                        filterable placeholder="请选择" @change="startVideo">
                     <el-option  v-for="(item,index) in options" 
                     :key="index" 
                     :label="item.name" 

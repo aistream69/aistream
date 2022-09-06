@@ -24,6 +24,7 @@
     "hls": "0.0.1",
     "hls.js": "^1.1.5",
     "shelljs": "^0.8.5",
+    "silly-datetime": "^0.1.2",
     "stomp": "^0.1.1",
     "time-formater": "^1.0.1",
     "uglifyjs-webpack-plugin": "^2.2.0",

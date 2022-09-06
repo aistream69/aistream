@@ -289,9 +289,9 @@ extern "C" int DetectionProcess(IHandle handle, TensorData* data) {
     //struct timeval tv1, tv2;
     //gettimeofday(&tv1, NULL);
     if(!detection->init) {
+        detection->init = true;
         detection->input_w = w;
         detection->input_h = h;
-        detection->init = true;
         GeneratePriors(detection);
     }
 

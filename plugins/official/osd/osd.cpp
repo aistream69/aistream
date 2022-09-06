@@ -71,6 +71,7 @@ typedef struct {
     uint8_t text_yuv[3];
     int pix_w;
     int pix_h;
+    int text_enable;
     FontBmp bmp[CHAR_NUM]; // a-z
 } OSDConfig;
 
@@ -161,7 +162,7 @@ static void Nv12SetRectText(Packet* pkt) {
         // set rect
         Nv12pSetRect(x, y, w, h, pkt);
         // put text
-        if(det->name[0]) {
+        if(config.text_enable && det->name[0]) {
             Nv12SetText(det->name, x, y, pkt);
         }
     }
@@ -269,7 +270,7 @@ static void Yuv420pSetRectText(Packet* pkt) {
         // set rect
         Yuv420pSetRect(x, y, w, h, pkt);
         // put text
-        if(det->name[0]) {
+        if(config.text_enable && det->name[0]) {
             Yuv420pSetText(det->name, x, y, pkt);
         }
     }
@@ -297,6 +298,9 @@ static int YuvColorInit(char* params) {
     config.rect_yuv[1] = - 0.1687*rgb[0] - 0.3313*rgb[1] + 0.5*rgb[2] + 128;    // u
     config.rect_yuv[2] = 0.5*rgb[0] - 0.4187*rgb[1] - 0.0813*rgb[2] + 128;      // v
     // init text yuv color
+    if(!config.text_enable) {
+        return 0;
+    }
     size = 0;
     color = GetArrayBufFromJson(params, size, "font", "color");
     if(color == nullptr || size != 3) {
@@ -422,7 +426,8 @@ static int CreateEncoder(auto pkt, OSDParams* osd) {
     }
     encoder.y_size = dst_w*dst_h;
     encoder.uv_size = encoder.y_size/4;
-    AppDebug("create encoder success, id:%d,format:%d,codec:%s", osd->id, encoder.ctx->pix_fmt, codec_name);
+    AppDebug("create encoder success, id:%d,%dx%d,format:%d,codec:%s", 
+            osd->id, dst_w, dst_h, encoder.ctx->pix_fmt, codec_name);
 
     return 0;
 }
@@ -506,8 +511,8 @@ static int FontInit(char* params) {
     int pix_w = GetIntValFromJson(params, "font", "width");
     int pix_h = GetIntValFromJson(params, "font", "height");
     if(ttf_file == nullptr || pix_w < 0 || pix_h < 0) {
-        AppError("get font params failed");
-        return -1;
+        printf("font params not exist, disable osd text\n");
+        return 0;
     }
     int ret = FT_Init_FreeType(&m_pFTLib);
     if(ret != 0) {
@@ -556,6 +561,7 @@ static int FontInit(char* params) {
     FT_Done_FreeType(m_pFTLib);
     config.pix_w = pix_w;
     config.pix_h = pix_h;
+    config.text_enable = 1;
 
     return 0;
 }
@@ -566,18 +572,17 @@ extern "C" int OSDInit(ElementData* data, char* params) {
     if(data->queue_len < 0) {
         data->queue_len = 50;
     }
-    if(config.init) {
-        return 0;
-    }
     if(params == NULL) {
         AppWarn("params is null");
         return -1;
     }
+    if(__sync_add_and_fetch(&config.init, 1) > 1) {
+        return 0;
+    }
     FFmpegInit();
+    FontInit(params);
     YuvColorInit(params);
     EncoderInit(params);
-    FontInit(params);
-    config.init = 1;
     return 0;
 }
 
@@ -591,8 +596,8 @@ extern "C" int OSDProcess(IHandle handle, TensorData* data) {
     OSDParams* osd = (OSDParams* )handle;
     Packet* pkt = data->tensor_buf.input[0];
     if(!osd->encoder.init) {
-        CreateEncoder(pkt, osd);
         osd->encoder.init = 1;
+        CreateEncoder(pkt, osd);
     }
     osd->set_rect_text(pkt);
     Encoding(pkt, osd, data);

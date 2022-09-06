@@ -230,7 +230,7 @@ int request_cb(struct evhttp_request* req, void (*http_task)(struct evhttp_reque
             cbuf[POST_BUF_MAX - 1] = 0;
         }
     }
-    if(strcmp(cmdtype, "GET") != 0) {
+    if(strcmp(cmdtype, "GET") != 0 && strcmp(url, "/api/data/query") != 0) {
         Restful* rest = (Restful* )arg;
         AppDebug("%s,%s:%s", rest->GetType(), url, cbuf);
     }

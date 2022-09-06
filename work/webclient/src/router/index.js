@@ -15,6 +15,7 @@ const gb28181 = r => require.ensure([], () => r(require('@/page/gb28181')), 'gb2
 const audioDevice = r => require.ensure([], () => r(require('@/page/audio')), 'audioDevice');
 const userManage = r => require.ensure([], () => r(require('@/page/adminList')), 'userManage');
 const server = r => require.ensure([], () => r(require('@/page/server')), 'server');
+const query = r => require.ensure([], () => r(require('@/page/query')), 'query');
 const addSlave = r => require.ensure([], () => r(require('@/page/addSlaves')), 'addSlave');
 const systemInit = r => require.ensure([], () => r(require('@/page/systemInit')), 'systemInit');
 const output = r => require.ensure([], () => r(require('@/page/output')), 'output');
@@ -68,6 +69,10 @@ const routes = [
 			path: '/audioDevice',
 			component: audioDevice,
 			meta: ['设备管理', '音频'],
+		},{
+			path: '/query',
+			component: query,
+			meta: ['数据管理', '查询'],
 		},{
 			path: '/server',
 			component: server,
