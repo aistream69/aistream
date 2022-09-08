@@ -47,6 +47,7 @@ typedef struct {
 
 static Resnet50Engine* engine = NULL;
 static int net_w = 224, net_h = 224;
+static ShareParams share_params = {0};
 static std::unique_ptr<char[]> MakeJson(int id, auto pkt, const char* name, float confidence) {
     char str[384];
     struct timeval tv;
@@ -103,12 +104,13 @@ static void LabelsInit(const char* filename) {
 }
 
 extern "C" int ResnetInit(ElementData* data, char* params) {
+    share_params = GlobalConfig();
     strncpy(data->input_name[0], "img_input", sizeof(data->input_name[0]));
     if(params == NULL) {
         AppWarn("params is null");
         return -1;
     }
-    data->queue_len = GetIntValFromFile(CONFIG_FILE, "img", "queue_len");
+    data->queue_len = GetIntValFromFile(share_params.config_file, "img", "queue_len");
     if(data->queue_len < 0) {
         data->queue_len = 50;
     }

@@ -51,6 +51,7 @@ typedef struct {
 } RtmpParams;
 
 static long int _now_sec = 0;
+static ShareParams share_params = {0};
 static void CopyToPacket(uint8_t* buf, int size, RtmpParams* rtmp) {
     HeadParams params = {0};
     params.frame_id = ++rtmp->frame_id;
@@ -197,7 +198,8 @@ static void RtmpDaemon(RtmpParams* rtmp) {
 
 
 extern "C" int RtmpInit(ElementData* data, char* params) {
-    data->queue_len = GetIntValFromFile(CONFIG_FILE, "video", "queue_len");
+    share_params = GlobalConfig();
+    data->queue_len = GetIntValFromFile(share_params.config_file, "video", "queue_len");
     if(data->queue_len < 0) {
         data->queue_len = 50;
     }
@@ -217,7 +219,7 @@ extern "C" IHandle RtmpStart(int channel, char* params) {
     }
     RtmpParams* rtmp = new RtmpParams();
     rtmp->id = channel;
-    rtmp->queue_len_max = GetIntValFromFile(CONFIG_FILE, "video", "queue_len");
+    rtmp->queue_len_max = GetIntValFromFile(share_params.config_file, "video", "queue_len");
     rtmp->queue_len_max = rtmp->queue_len_max > 0 ? rtmp->queue_len_max : 50;
     strncpy(rtmp->url, url.get(), sizeof(rtmp->url));
     rtmp->running = 1;

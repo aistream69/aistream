@@ -30,13 +30,60 @@ static void request_logout(struct evhttp_request* req, void* arg) {
     request_first_stage;
 }
 
+static int GetHttpFileTask(const char* config_file, char** ppbody) {
+    int size = 0;
+    const char *filename = "cfg/task.json";
+    // create json base
+    cJSON* root = cJSON_CreateObject();
+    cJSON* data_root = cJSON_CreateObject();
+    cJSON* task_root = cJSON_CreateArray();
+    cJSON_AddStringToObject(root, "code", "0");
+    cJSON_AddStringToObject(root, "msg", "success");
+    cJSON_AddItemToObject(root, "data", data_root);
+    cJSON_AddItemToObject(data_root, "httpfile", task_root);
+    // read htppfile task from config
+    auto buf = GetArrayBufFromFile(filename, size, "tasks");
+    if(buf != nullptr) {
+        for(int i = 0; i < size; i ++) {
+            auto arrbuf = GetBufFromArray(buf.get(), i);
+            if(arrbuf == nullptr) {
+                break;
+            }
+            auto name = GetStrValFromJson(arrbuf.get(), "name");
+            auto input = GetStrValFromJson(arrbuf.get(), "input");
+            auto config = GetStrValFromJson(arrbuf.get(), "config");
+            if(name == nullptr || input == nullptr || config == nullptr) {
+                AppWarn("read name or config failed, %s", filename);
+                break;
+            }
+            if(!strcmp(input.get(), "img")) {
+                int http_file_port = GetHttpFilePort(name.get(), config_file);
+                cJSON* fld = cJSON_CreateObject();
+                cJSON_AddStringToObject(fld, "name", name.get());
+                cJSON_AddNumberToObject(fld, "port", http_file_port);
+                cJSON_AddItemToArray(task_root, fld);
+            }
+        }
+    }
+    else {
+        printf("warning, read %s failed\n", filename);
+    }
+    // output
+    *ppbody = cJSON_Print(root);
+    cJSON_Delete(root);
+    return 0;
+}
+
 static void request_system_init(struct evhttp_request* req, void* arg) {
     request_first_stage;
     CommonParams* params = (CommonParams* )arg;
     char* buf = (char* )params->arga;
+    char** ppbody = (char **)params->argb;
     Restful* rest = (Restful* )params->argc;
     MediaServer* media = rest->media;
     SlaveParams* slave = media->GetSlave();
+    const char* config_file = media->config_file.c_str();
+
     auto ip = GetStrValFromJson(buf, "ip");
     auto internet_ip = GetStrValFromJson(buf, "internet_ip");
     if(ip == nullptr || internet_ip == nullptr) {
@@ -45,6 +92,7 @@ static void request_system_init(struct evhttp_request* req, void* arg) {
     }
     strncpy(slave->_ip, ip.get(), sizeof(slave->_ip));
     strncpy(slave->_internet_ip, internet_ip.get(), sizeof(slave->_internet_ip));
+    GetHttpFileTask(config_file, ppbody);
     media->system_init = 1;
 }
 

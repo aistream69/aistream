@@ -51,6 +51,7 @@ typedef struct {
 } ModuleObj;
 
 static Yolov3Engine* engine = NULL;
+static ShareParams share_params = {0};
 static std::unique_ptr<char[]> MakeJson(int id, auto pkt, std::vector<int> classIds, 
                 std::vector<float> confidences, std::vector<Rect> boxes, auto labels) {
     char str[384];
@@ -171,12 +172,13 @@ static int Postprocess(std::vector<Mat> outs, std::vector<int>& classIds,
 }
 
 extern "C" int YoloInit(ElementData* data, char* params) {
+    share_params = GlobalConfig();
     strncpy(data->input_name[0], "img_input", sizeof(data->input_name[0]));
     if(params == NULL) {
         AppWarn("params is null");
         return -1;
     }
-    data->queue_len = GetIntValFromFile(CONFIG_FILE, "img", "queue_len");
+    data->queue_len = GetIntValFromFile(share_params.config_file, "img", "queue_len");
     if(data->queue_len < 0) {
         data->queue_len = 50;
     }

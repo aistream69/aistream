@@ -59,7 +59,6 @@ typedef struct {
 typedef struct {
     int queue_len;
     int framesize_max;
-    NginxParams nginx;
     pthread_t pid;
     std::mutex _obj_mtx;
     std::vector<PreviewParams*> obj_vec;
@@ -67,6 +66,7 @@ typedef struct {
 } PreviewConfig;
 
 static PreviewConfig config = {0};
+static ShareParams share_params = {0};
 static int DelLastTsFile(char *path) {
     DIR *dirp;
     struct dirent *dp;
@@ -91,7 +91,8 @@ static int DelOldTsFile(auto preview) { // ugly code
     int j, k;
     char buf[256], m3u8[384], ts_file[384];
 
-    snprintf(m3u8, sizeof(m3u8), "%s/m3u8/stream%d/play.m3u8", config.nginx.workdir, preview->id);
+    snprintf(m3u8, sizeof(m3u8), "%s/m3u8/stream%d/play.m3u8", 
+            share_params.nginx.workdir, preview->id);
     if(!access(m3u8, F_OK)) {
         fp = fopen(m3u8, "rb");
         if(fp == NULL) {
@@ -127,8 +128,8 @@ static int DelOldTsFile(auto preview) { // ugly code
                     if(ts_num < 0) {
                         break;
                     }
-                    snprintf(ts_file, sizeof(ts_file), 
-                            "%s/m3u8/stream%d/play%d.ts", config.nginx.workdir, preview->id, ts_num);
+                    snprintf(ts_file, sizeof(ts_file), "%s/m3u8/stream%d/play%d.ts", 
+                            share_params.nginx.workdir, preview->id, ts_num);
                     if(!access(ts_file, F_OK)) {
                         remove(ts_file);
                     }
@@ -147,8 +148,8 @@ static int DelOldTsFile(auto preview) { // ugly code
                 }
             }
             for(k = 0; k < 3; k ++) {
-                snprintf(ts_file, sizeof(ts_file), 
-                        "%s/m3u8/stream%d/play%d.ts", config.nginx.workdir, preview->id, latest_num + k);
+                snprintf(ts_file, sizeof(ts_file), "%s/m3u8/stream%d/play%d.ts", 
+                        share_params.nginx.workdir, preview->id, latest_num + k);
                 if(access(ts_file, F_OK) != 0) {
                     continue;
                 }
@@ -163,8 +164,8 @@ static int DelOldTsFile(auto preview) { // ugly code
     }
     else {
         for(k = 0; k < 3; k ++) {
-            snprintf(ts_file, sizeof(ts_file), 
-                    "%s/m3u8/stream%d/play%d.ts", config.nginx.workdir, preview->id, k);
+            snprintf(ts_file, sizeof(ts_file), "%s/m3u8/stream%d/play%d.ts", 
+                    share_params.nginx.workdir, preview->id, k);
             if(access(ts_file, F_OK) != 0) {
                 continue;
             }
@@ -226,7 +227,8 @@ static int CreatePreview(PreviewParams* preview) {
     preview->frame_id = -1;
     preview->stream_index = -1;
     if(!strncmp(preview->type, "hls", sizeof(preview->type))) {
-        snprintf(path, sizeof(path), "%s/m3u8/stream%d", config.nginx.workdir, preview->id);
+        snprintf(path, sizeof(path), "%s/m3u8/stream%d", 
+                share_params.nginx.workdir, preview->id);
         DirCheck(path);
         DelLastTsFile(path);
         strncat(path, "/play.m3u8", sizeof(path));
@@ -372,7 +374,8 @@ static int DestroyPreview(PreviewParams *preview) {
     preview->find_idr = 0;
 
     char m3u8[URL_LEN*2];
-    snprintf(m3u8, sizeof(m3u8), "%s/m3u8/stream%d/play.m3u8", config.nginx.workdir, preview->id);
+    snprintf(m3u8, sizeof(m3u8), "%s/m3u8/stream%d/play.m3u8", 
+            share_params.nginx.workdir, preview->id);
     if(!access(m3u8, F_OK)) {
         remove(m3u8);
     }
@@ -469,18 +472,18 @@ static void *PreviewDaemonThread(void *arg) {
 }
 
 extern "C" int PreviewInit(ElementData* data, char* params) {
+    share_params = GlobalConfig();
     strncpy(data->input_name[0], "preview_input", sizeof(data->input_name[0]));
     if(config.queue_len != 0) {
         return 0;
     }
     FFmpegInit();
-    NginxInit(config.nginx);
-    config.framesize_max = GetIntValFromFile(CONFIG_FILE, "video", "framesize_max");
+    config.framesize_max = GetIntValFromFile(share_params.config_file, "video", "framesize_max");
     if(config.framesize_max < 0) {
         AppWarn("get video framesize_max failed");
         config.framesize_max = 1024000;
     }
-    config.queue_len = GetIntValFromFile(CONFIG_FILE, "video", "queue_len");
+    config.queue_len = GetIntValFromFile(share_params.config_file, "video", "queue_len");
     if(config.queue_len < 0) {
         AppWarn("get video queue_len failed");
         config.queue_len = 50;

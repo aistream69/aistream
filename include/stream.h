@@ -40,16 +40,18 @@ class MediaServer {
 public:
     MediaServer(void);
     ~MediaServer(void);
-    void Run(void);
+    void Run(const char* cfg);
     MasterParams* GetMaster(void) {return master;}
     SlaveParams* GetSlave(void) {return slave;}
     ConfigParams* GetConfig(void) {return config;}
     ObjParams* GetObjParams(void) {return obj_params;}
     DbParams* GetDB(void) {return db;}
+    std::string config_file;
     int running;
     int system_init;
     long int now_sec;
 private:
+    void UpdateTime(void);
     MasterParams*   master;
     SlaveParams*    slave;
     ConfigParams*   config;

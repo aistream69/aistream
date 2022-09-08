@@ -739,15 +739,14 @@ static int GetNginxRoot(char* nginx_config_path, char* workdir) {
     return 0;
 }
 
-void NginxInit(NginxParams& nginx) {
+void NginxInit(NginxParams& nginx, const char* config_file) {
     char cfg_file[512];
-    auto nginx_path = GetStrValFromFile(CONFIG_FILE, "system", "nginx_path");
+    auto nginx_path = GetStrValFromFile(config_file, "system", "nginx_path");
     if(nginx_path == nullptr) {
         nginx.http_port = -1;
         AppWarn("get nginx path failed");
         return;
     }
-    //snprintf(cfg_file, sizeof(cfg_file), "%s/conf/servers/hls.conf", nginx_path.get());
     snprintf(cfg_file, sizeof(cfg_file), "%s/conf/nginx.conf", nginx_path.get());
     GetNginxPort(cfg_file, nginx.http_port);
     if(nginx.http_port == 0) {
@@ -773,5 +772,40 @@ void LibevntInit(void) {
     if(__sync_add_and_fetch(&init, 1) == 1) {
         evthread_use_pthreads();
     }
+}
+
+ShareParams GlobalConfig(ShareParams* params) {
+    static ShareParams _params = {0};
+    if(params != NULL) {
+        memcpy(&_params, params, sizeof(ShareParams));
+    }
+    return _params;
+}
+
+int GetHttpFilePort(char* name, const char* config_file) {
+    int port = -1;
+    int size = 0;
+    auto buf = GetArrayBufFromFile(config_file, size, "system", "httpfile");
+    if(buf == nullptr) {
+        AppWarn("read httpfile from %s failed", config_file);
+        return port;
+    }
+    for(int i = 0; i < size; i ++) {
+        auto arrbuf = GetBufFromArray(buf.get(), i);
+        if(arrbuf == nullptr) {
+            break;
+        }
+        auto task = GetStrValFromJson(arrbuf.get(), "task");
+        int _port = GetIntValFromJson(arrbuf.get(), "port");
+        if(task == nullptr || _port < 0) {
+            AppWarn("read httpfile task/port failed, %s", config_file);
+            break;
+        }
+        if(strcmp(name, task.get()) != 0) {
+            continue;
+        }
+        port = _port;
+    }
+    return port;
 }
 

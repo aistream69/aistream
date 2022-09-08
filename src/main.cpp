@@ -22,11 +22,12 @@
 #include <sys/stat.h>
 #include "stream.h"
 
+static const char* cfg = NULL;
 static void MainProcess(int debug = 0) {
     if(debug) {
         AppDebug("start main process, pid:%d", getpid());
         MediaServer *media = new MediaServer();
-        media->Run();
+        media->Run(cfg);
         AppDebug("run ok");
         exit(0);
     }
@@ -40,7 +41,7 @@ static void MainProcess(int debug = 0) {
     else if(pid == 0) {
         AppDebug("start main process, pid:%d", getpid());
         MediaServer *media = new MediaServer();
-        media->Run();
+        media->Run(cfg);
         AppDebug("run ok");
         exit(0);
     }
@@ -62,12 +63,16 @@ static void SigHandler(const int signal) {
     //    return;
     //}
     AppWarn("recv quit pid %d(%s), restart it", quit_pid, strerror(errno));
+    sleep(5); // avoid restart too often
     MainProcess();
 
     return;
 }
 
 int main(int argc, char *argv[]) {
+    if(argc > 1) {
+        cfg = argv[1];
+    }
     DirCheck("log");
     AppDebug("Built:%s %s, version:%s, %s start ...", __TIME__, __DATE__, SW_VERSION, SERVER_NAME);
     signal(SIGCHLD, SigHandler);

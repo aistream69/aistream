@@ -34,6 +34,8 @@ public:
     int DBInsert(const char* table, char* json); // with multi thread mutex, not best perfermance
     int DBUpdate(const char* table, char* json, const char* select, 
                  const char* val, const char* cmd = "$set", bool upsert = true);
+    int DBUpdate(const char* table, char* json, const char* select_a, const char* val_a, 
+                 const char* select_b, int val_b, const char* cmd = "$set", bool upsert = true);
     int DBUpdate(const char* table, char* json, const char* select, 
                  int val, const char* cmd = "$set", bool upsert = true);
     int DBUpdate(const char* table, const char* select, int val, 
@@ -41,6 +43,8 @@ public:
     int DBUpdate(const char* table, const char* select, int val, 
                  const char* _update, int _val, const char* cmd = "$set", bool upsert = true);
     int DBDel(const char* table, const char* select, const char* val);
+    int DBDel(const char* table, const char* select_a, const char* val_a, 
+              const char* select_b, int val_b);
     int DBDel(const char* table, const char* select, int val);
     int DBTraverse(const char* table, void* arg, int (*cb)(char* buf, void* arg));
     int DBQuery(const char* table, int start_time, int stop_time, std::vector<int> id_vec, 

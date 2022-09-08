@@ -47,7 +47,16 @@ bool ConfigParams::Read(const char *cfg) {
     else {
         GetLocalIp(local_ip);
     }
-    NginxInit(nginx);
+    NginxInit(nginx, cfg);
+
+    // share config
+    ShareParams params;
+    strncpy(params.config_file, cfg, sizeof(params.config_file));
+    strncpy(params.local_ip, local_ip, sizeof(params.local_ip));
+    memcpy(&params.nginx, &nginx, sizeof(nginx));
+    params.media = media;
+    GlobalConfig(&params);
+
     AppDebug("nginx path:%s, http_port:%d", nginx.workdir, nginx.http_port);
     
     return true;

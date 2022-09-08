@@ -37,6 +37,7 @@ typedef struct {
 } RtspParams;
 
 static long int _now_sec = 0;
+static ShareParams share_params = {0};
 static void RtspDaemon(RtspParams* rtsp_params) {
     struct timeval tv;
     RtspPlayer* player = &rtsp_params->player;
@@ -86,12 +87,13 @@ static int RtspCallback(unsigned char *buf, int size, void *arg) {
 }
 
 extern "C" int RtspInit(ElementData* data, char* params) {
-    data->queue_len = GetIntValFromFile(CONFIG_FILE, "video", "queue_len");
+    share_params = GlobalConfig();
+    data->queue_len = GetIntValFromFile(share_params.config_file, "video", "queue_len");
     if(data->queue_len < 0) {
         data->queue_len = 50;
     }
     /*
-    data->sleep_usec = GetIntValFromFile(CONFIG_FILE, "obj", "rtsp", "sleep_usec");
+    data->sleep_usec = GetIntValFromFile(share_params.config_file, "obj", "rtsp", "sleep_usec");
     if(data->sleep_usec < 0) {
         data->sleep_usec = 20000;
     }
@@ -117,7 +119,7 @@ extern "C" IHandle RtspStart(int channel, char* params) {
     RtspPlayer* player = &rtsp_params->player;
     player->cb = RtspCallback;
     player->streamUsingTCP = tcp_enable;
-    player->buffersize = GetIntValFromFile(CONFIG_FILE, "video", "framesize_max");
+    player->buffersize = GetIntValFromFile(share_params.config_file, "video", "framesize_max");
     player->buffersize = player->buffersize > 0 ? player->buffersize : 1024000;
     strncpy((char *)player->url, url.get(), sizeof(player->url));
     player->arg = rtsp_params;
@@ -126,7 +128,7 @@ extern "C" IHandle RtspStart(int channel, char* params) {
         delete rtsp_params;
         return NULL;
     }
-    rtsp_params->queue_len_max = GetIntValFromFile(CONFIG_FILE, "video", "queue_len");
+    rtsp_params->queue_len_max = GetIntValFromFile(share_params.config_file, "video", "queue_len");
     rtsp_params->queue_len_max = rtsp_params->queue_len_max > 0 ? rtsp_params->queue_len_max : 50;
     rtsp_params->running = 1;
     rtsp_params->t = new std::thread(&RtspDaemon, rtsp_params);

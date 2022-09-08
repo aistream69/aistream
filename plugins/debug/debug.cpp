@@ -29,6 +29,7 @@ typedef struct {
     int yuv_size;
 } DebugParams;
 
+static ShareParams share_params = {0};
 static void CopyToPacket(DebugParams* debug, TensorData* data) {
     int num = 3;
     size_t size= sizeof(DetectionResult)*num;
@@ -62,8 +63,9 @@ static void CopyToPacket(DebugParams* debug, TensorData* data) {
 }
 
 extern "C" int DebugInit(ElementData* data, char* params) {
+    share_params = GlobalConfig();
     strncpy(data->input_name[0], "debug_input", sizeof(data->input_name[0]));
-    data->queue_len = GetIntValFromFile(CONFIG_FILE, "video", "rgb_queue_len");
+    data->queue_len = GetIntValFromFile(share_params.config_file, "video", "rgb_queue_len");
     if(data->queue_len < 0) {
         data->queue_len = 10;
     }

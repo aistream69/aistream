@@ -51,6 +51,7 @@ typedef struct {
     FrameParam rgb;
 } DecodeParams;
 
+static ShareParams share_params = {0};
 static int InitFFmpeg(FFmpegParam *ffmpeg) {
     int ret;
     const AVCodec *codec;
@@ -196,8 +197,9 @@ static int FFmpegDecode(FrameParam* frame, FrameParam* rgb, FFmpegParam* ffmpeg,
 }
 
 extern "C" int DecodeInit(ElementData* data, char* params) {
+    share_params = GlobalConfig();
     strncpy(data->input_name[0], "decode_input", sizeof(data->input_name[0]));
-    data->queue_len = GetIntValFromFile(CONFIG_FILE, "video", "rgb_queue_len");
+    data->queue_len = GetIntValFromFile(share_params.config_file, "video", "rgb_queue_len");
     if(data->queue_len < 0) {
         data->queue_len = 10;
     }
@@ -216,7 +218,7 @@ extern "C" IHandle DecodeStart(int channel, char* params) {
         free(dec_params);
         return NULL;
     }
-    dec_params->skip = GetIntValFromFile(CONFIG_FILE, "video", "rgb_skip");
+    dec_params->skip = GetIntValFromFile(share_params.config_file, "video", "rgb_skip");
     if(dec_params->skip < 0) {
         dec_params->skip = 1;
     }

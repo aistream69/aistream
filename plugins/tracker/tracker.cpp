@@ -32,9 +32,7 @@
 using namespace cv;
 
 typedef struct {
-    char local_ip[128];
     float capture_line;
-    NginxParams nginx;
     DbParams* db;
 } TrackerParams;
 
@@ -54,6 +52,7 @@ typedef struct {
 } ModuleObj;
 
 static TrackerParams tracker = {0};
+static ShareParams share_params = {0};
 static BObject RectCorrect(STrack output_strack, int w, int h) {
     BObject det;
     vector<float> tlwh = output_strack.tlwh;
@@ -100,19 +99,19 @@ static void Rgb2Jpg(int id, BObject& det, auto rgb, char scene_path[URL_LEN], ch
     std::vector<unsigned char> obj_buf;
     MatToJpg(obj_img, obj_buf);
     snprintf(obj_path, URL_LEN, "%s/image/%s/%d/%ld_0_obj.jpg", 
-            tracker.nginx.workdir, date, id, tv.tv_sec);
+            share_params.nginx.workdir, date, id, tv.tv_sec);
     WriteFile(obj_path, &obj_buf[0], obj_buf.size(), "wb");
     snprintf(obj_path, URL_LEN, "http://%s:%d/image/%s/%d/%ld_0_obj.jpg", 
-            tracker.local_ip, tracker.nginx.http_port, date, id, tv.tv_sec);
+            share_params.local_ip, share_params.nginx.http_port, date, id, tv.tv_sec);
 
     std::vector<unsigned char> scene_buf;
     rectangle(scene_img, _rect, Scalar(0,255,0), 2);
     MatToJpg(scene_img, scene_buf);
     snprintf(scene_path, URL_LEN, "%s/image/%s/%d/%ld_0_scene.jpg", 
-            tracker.nginx.workdir, date, id, tv.tv_sec);
+            share_params.nginx.workdir, date, id, tv.tv_sec);
     WriteFile(scene_path, &scene_buf[0], scene_buf.size(), "wb");
     snprintf(scene_path, URL_LEN, "http://%s:%d/image/%s/%d/%ld_0_scene.jpg", 
-            tracker.local_ip, tracker.nginx.http_port, date, id, tv.tv_sec);
+            share_params.local_ip, share_params.nginx.http_port, date, id, tv.tv_sec);
 }
 
 static std::unique_ptr<char[]> MakeJson(int id, BObject& det, char *scene_url, char *obj_url) {
@@ -227,17 +226,11 @@ extern "C" int TrackerInit(ElementData* data, char* params) {
     if(tracker.capture_line <= 0) {
         tracker.capture_line = 0.66;
     }
-    auto localhost = GetStrValFromFile(CONFIG_FILE, "system", "localhost");
-    if(localhost != nullptr) {
-        strncpy(tracker.local_ip, localhost.get(), sizeof(tracker.local_ip));
-    }
-    else {
-        GetLocalIp(tracker.local_ip);
-    }
-    NginxInit(tracker.nginx);
+    share_params = GlobalConfig();
     int write_db = GetIntValFromJson(params, "write_db");
     if(write_db == 1) {
-        tracker.db = new DbParams(NULL);
+        MediaServer* media = (MediaServer* )share_params.media;
+        tracker.db = new DbParams(media);
     }
 
     return 0;

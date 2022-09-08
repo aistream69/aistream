@@ -31,16 +31,25 @@ typedef struct {
     int  val;
 } CommonParams;
 
+typedef struct {
+    char config_file[512];
+    char local_ip[128];
+    NginxParams nginx;
+    void* media;
+} ShareParams;
+
 void HangUp(void);
 int DirCheck(const char *dir);
 int GetLocalIp(char host_ip[128]);
-void NginxInit(NginxParams& nginx);
+void NginxInit(NginxParams& nginx, const char* config_file);
 int DelOldFile(const char* dir, uint32_t max_sec, int layer, const char* suffix);
 std::unique_ptr<char[]> ReadFile2Buf(const char *filename);
 int ReadFile(const char *filename, void *buf, int size);
 int ReadFile2(const char *filename, void *buf, int max);
 int WriteFile(const char *filename, void *buf, int size, const char *mode);
 int GetFileSize(const char *filename);
+ShareParams GlobalConfig(ShareParams* params = NULL);
+int GetHttpFilePort(char* name, const char* config_file);
 void LibevntInit(void);
 int GetIntValFromJson(char *buf, 
         const char *name1, const char *name2=NULL, const char *name3=NULL);

@@ -122,6 +122,31 @@ static int HttpToSlave(char* buf, const char* url, MasterParams* master) {
     return 0;
 }
 
+static void SetHttpfileTask(char* buf, auto slave) {
+    int size = 0;
+    auto array = GetArrayBufFromJson(buf, size, "data", "httpfile");
+    if(array == nullptr || size == 0) {
+        return;
+    }
+    slave->httpf_task.clear();
+    for(int i = 0; i < size; i++) {
+        auto arrbuf = GetBufFromArray(array.get(), i);
+        if(arrbuf == NULL) {
+            continue;
+        }
+        auto name = GetStrValFromJson(arrbuf.get(), "name");
+        int port = GetIntValFromJson(arrbuf.get(), "port");
+        if(name == nullptr || port < 0) {
+            printf("get name/port failed, %s\n", arrbuf.get());
+            continue;
+        }
+        TaskCfg task = {0};
+        strncpy(task.name, name.get(), sizeof(task.name));
+        task.port = port;
+        slave->httpf_task.push_back(task);
+    }
+}
+
 static int SlaveSystemInit(auto slave, MasterParams* master) {
     char url[256];
     char buf[384];
@@ -136,6 +161,7 @@ static int SlaveSystemInit(auto slave, MasterParams* master) {
         slave->alive = false;
         return -1;
     }
+    SetHttpfileTask(ack.buf.get(), slave);
     slave->alive = true;
 
     if(master->output == nullptr) {
@@ -148,12 +174,12 @@ static int SlaveSystemInit(auto slave, MasterParams* master) {
     return 0;
 }
 
-static std::shared_ptr<SlaveParam> GetSlave(char* ip, MasterParams* master) {
+static std::shared_ptr<SlaveParam> GetSlave(char* ip, int rest_port, MasterParams* master) {
     std::shared_ptr<SlaveParam> slave = nullptr;
     master->m_slave_mtx.lock();
     for(size_t i = 0; i < master->m_slave_vec.size(); i++) {
         auto _slave = master->m_slave_vec[i];
-        if(!strncmp(_slave->ip, ip, sizeof(_slave->ip))) {
+        if(rest_port == _slave->rest_port && !strncmp(_slave->ip, ip, sizeof(_slave->ip))) {
             slave = _slave;
             break;
         }
@@ -171,7 +197,7 @@ static auto MAddSlave(char* buf, MasterParams* master) {
         AppWarn("get ip/port failed");
         return slave;
     }
-    auto _slave = GetSlave(ip.get(), master);
+    auto _slave = GetSlave(ip.get(), rest_port, master);
     if(_slave != nullptr) {
         AppWarn("slave %s exist", ip.get());
         return slave;
@@ -190,11 +216,12 @@ static auto MAddSlave(char* buf, MasterParams* master) {
     return slave;
 }
 
-static int MDelSlave(char* ip, MasterParams* master) {
+static int MDelSlave(char* ip, int rest_port, MasterParams* master) {
     master->m_slave_mtx.lock();
     for(auto itr = master->m_slave_vec.begin(); itr != master->m_slave_vec.end(); ++itr) {
-        if(!strncmp((*itr)->ip, ip, sizeof((*itr)->ip))) {
-            (*itr)->alive = false;
+        auto slave = *itr;
+        if(rest_port == slave->rest_port && !strncmp(slave->ip, ip, sizeof(slave->ip))) {
+            slave->alive = false;
             master->m_slave_vec.erase(itr);
             break;
         }
@@ -320,10 +347,6 @@ static int SlaveCB(char* buf, void* arg) {
     MediaServer *media = (MediaServer *)arg;
     MasterParams* master = media->GetMaster();
 
-    auto ip = GetStrValFromJson(buf, "ip");
-    if(ip == nullptr) {
-        return -1;
-    }
     auto slave = MAddSlave(buf, master);
     if(slave == nullptr) {
         return -1;
@@ -553,20 +576,22 @@ static void request_add_slave(struct evhttp_request* req, void* arg) {
     MasterParams* master = media->GetMaster();
 
     auto ip = GetStrValFromJson(buf, "ip");
+    int rest_port = GetIntValFromJson(buf, "rest_port");
     auto slave = MAddSlave(buf, master);
-    if(slave == nullptr || ip == nullptr) {
+    if(slave == nullptr || ip == nullptr || rest_port < 0) {
         snprintf(err_msg, sizeof(err_msg), "add slave failed");
         goto end;
     }
     SlaveSystemInit(slave, master);
-    db->DBUpdate("slave", buf, "ip", ip.get());
+    db->DBUpdate("slave", buf, "ip", ip.get(), "rest_port", rest_port);
 end:
     CheckErrMsg(err_msg, (char **)params->argb);
 }
 
 /**********************************************************
 {
-    "ip":"192.168.0.100"
+    "ip":"192.168.0.100",
+    "rest_port":8082
 }
 **********************************************************/
 static void request_del_slave(struct evhttp_request* req, void* arg) {
@@ -580,12 +605,13 @@ static void request_del_slave(struct evhttp_request* req, void* arg) {
     MasterParams* master = media->GetMaster();
 
     auto ip = GetStrValFromJson(buf, "ip");
-    if(ip == nullptr) {
-        snprintf(err_msg, sizeof(err_msg), "get ip failed");
+    int rest_port = GetIntValFromJson(buf, "rest_port");
+    if(ip == nullptr || rest_port < 0) {
+        snprintf(err_msg, sizeof(err_msg), "get ip/port failed");
         goto end;
     }
-    MDelSlave(ip.get(), master);
-    db->DBDel("slave", "ip", ip.get());
+    MDelSlave(ip.get(), rest_port, master);
+    db->DBDel("slave", "ip", ip.get(), "rest_port", rest_port);
 end:
     CheckErrMsg(err_msg, (char **)params->argb);
 }
@@ -837,7 +863,6 @@ static void request_task_support(struct evhttp_request* req, void* arg) {
         cJSON *fld;
         char* name = master->cfg_task_vec[i].name;
         char* input = master->cfg_task_vec[i].input;
-        int port = master->cfg_task_vec[i].http_file_port;
         if(strcmp(obj, input)) {
             continue;
         }
@@ -853,11 +878,20 @@ static void request_task_support(struct evhttp_request* req, void* arg) {
             if(!slave->alive) {
                 continue;
             }
-            if(strlen(slave->internet_ip) > 0) {
-                snprintf(_url[n++], 256, "http://%s:%d/file-%s", slave->internet_ip, port, name);
-            }
-            else {
-                snprintf(_url[n++], 256, "http://%s:%d/file-%s", slave->ip, port, name);
+            for(size_t k = 0; k < slave->httpf_task.size(); k ++) {
+                auto task = slave->httpf_task[k];
+                if(strcmp(name, task.name)) {
+                    continue;
+                }
+                if(strlen(slave->internet_ip) > 0) {
+                    snprintf(_url[n++], 256, "http://%s:%d/file-%s", 
+                                    slave->internet_ip, task.port, name);
+                }
+                else {
+                    snprintf(_url[n++], 256, "http://%s:%d/file-%s", 
+                                            slave->ip, task.port, name);
+                }
+                break;
             }
         }
         cJSON* url_root = cJSON_CreateStringArray((const char** )_url, n);
@@ -1255,38 +1289,12 @@ const char* MasterRestful::GetType(void) {
     return "master";
 }
 
-static int GetHttpFilePort(char* name) {
-    int port = -1;
-    int size = 0;
-    const char *filename = CONFIG_FILE;
-    auto buf = GetArrayBufFromFile(filename, size, "system", "httpfile");
-    if(buf == nullptr) {
-        AppWarn("read httpfile from %s failed", filename);
-        return port;
-    }
-    for(int i = 0; i < size; i ++) {
-        auto arrbuf = GetBufFromArray(buf.get(), i);
-        if(arrbuf == nullptr) {
-            break;
-        }
-        auto task = GetStrValFromJson(arrbuf.get(), "task");
-        int _port = GetIntValFromJson(arrbuf.get(), "port");
-        if(task == nullptr || _port < 0) {
-            AppWarn("read httpfile task/port failed, %s", filename);
-            break;
-        }
-        if(strcmp(name, task.get()) != 0) {
-            continue;
-        }
-        port = _port;
-    }
-    return port;
-}
-
 static void ReadCfg(MasterParams* master) {
     // read task
     int size = 0;
     const char *filename = "cfg/task.json";
+    const char* config_file = master->media->config_file.c_str();
+
     auto buf = GetArrayBufFromFile(filename, size, "tasks");
     if(buf != nullptr) {
         for(int i = 0; i < size; i ++) {
@@ -1305,7 +1313,7 @@ static void ReadCfg(MasterParams* master) {
             strncpy(task.name, name.get(), sizeof(task.name));
             strncpy(task.input, input.get(), sizeof(task.input));
             if(!strncmp(task.input, "img", sizeof(task.input))) {
-                task.http_file_port = GetHttpFilePort(task.name);
+                task.port = GetHttpFilePort(task.name, config_file);
             }
             master->cfg_task_vec.push_back(task);
         }
@@ -1314,8 +1322,8 @@ static void ReadCfg(MasterParams* master) {
         AppWarn("read %s failed", filename);
     }
     // read web client user/password
-    auto user = GetStrValFromFile(CONFIG_FILE, "system", "client", "user");
-    auto password = GetStrValFromFile(CONFIG_FILE, "system", "client", "password");
+    auto user = GetStrValFromFile(config_file, "system", "client", "user");
+    auto password = GetStrValFromFile(config_file, "system", "client", "password");
     if(user != nullptr && password != nullptr) {
         strncpy(master->user, user.get(), sizeof(master->user));
         strncpy(master->password, password.get(), sizeof(master->password));
@@ -1385,7 +1393,7 @@ void MasterParams::SlaveThread(void) {
         m_slave_mtx.lock();
         for(size_t i = 0; i < m_slave_vec.size(); i++) {
             auto slave = m_slave_vec[i];
-            if(slave->offline_cnt > 1 && slave->offline_cnt % 60 != 0) {
+            if(slave->offline_cnt > 30 && slave->offline_cnt % 6 != 0) {
                 continue;
             }
             HttpAck ack = {nullptr};

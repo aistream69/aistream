@@ -21,7 +21,6 @@
 #include <string.h>
 
 #define URL_LEN 512
-#define CONFIG_FILE     "cfg/config.json"
 
 typedef struct {
     int http_port;

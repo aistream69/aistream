@@ -32,12 +32,13 @@ DbParams::~DbParams(void) {
 
 int DbParams::DBOpen(void) {
     handle = nullptr;
-    auto type = GetStrValFromFile(CONFIG_FILE, "system", "db", "type");
-    auto name = GetStrValFromFile(CONFIG_FILE, "system", "db", "name");
-    auto host = GetStrValFromFile(CONFIG_FILE, "system", "db", "host");
-    int port = GetIntValFromFile(CONFIG_FILE, "system", "db", "port");
-    auto user = GetStrValFromFile(CONFIG_FILE, "system", "db", "user");
-    auto password = GetStrValFromFile(CONFIG_FILE, "system", "db", "password");
+    const char* config_file = media->config_file.c_str();
+    auto type = GetStrValFromFile(config_file, "system", "db", "type");
+    auto name = GetStrValFromFile(config_file, "system", "db", "name");
+    auto host = GetStrValFromFile(config_file, "system", "db", "host");
+    int port = GetIntValFromFile(config_file, "system", "db", "port");
+    auto user = GetStrValFromFile(config_file, "system", "db", "user");
+    auto password = GetStrValFromFile(config_file, "system", "db", "password");
     if(type == nullptr || name == nullptr || host == nullptr 
                 || port < 0 || !strcmp(type.get(), "none")) {
         printf("db disabled\n");
@@ -298,6 +299,17 @@ int DbParams::DBUpdate(const char* table, char* json, const char* select,
     return _DBUpdate(handle, db_name, table, json, selector, cmd, upsert);
 }
 
+int DbParams::DBUpdate(const char* table, char* json, const char* select_a, const char* val_a, 
+                       const char* select_b, int val_b, const char* cmd, bool upsert) {
+    bson_t* selector = BCON_NEW(select_a, "{", "$eq", BCON_UTF8(val_a), "}", 
+                                select_b, "{", "$eq", BCON_INT32(val_b), "}");
+    if(selector == NULL) {
+        AppError("bson new selector failed, %s:%s,%s:%d", select_a, val_a, select_b, val_b);
+        return -1;
+    }
+    return _DBUpdate(handle, db_name, table, json, selector, cmd, upsert);
+}
+
 int DbParams::DBUpdate(const char* table, char* json, const char* select, 
                        int val, const char* cmd, bool upsert) {
     bson_t *selector = BconNew(select, val);
@@ -371,6 +383,17 @@ int DbParams::DBDel(const char* table, const char* select, const char* val) {
     selector = BconNew(select, val);
     if(selector == NULL) {
         AppError("bson new selector failed, %s:%s", select, val);
+        return -1;
+    }
+    return _DBDel(handle, db_name, table, selector);
+}
+
+int DbParams::DBDel(const char* table, const char* select_a, 
+                    const char* val_a, const char* select_b, int val_b) {
+    bson_t* selector = BCON_NEW(select_a, "{", "$eq", BCON_UTF8(val_a), "}", 
+                                select_b, "{", "$eq", BCON_INT32(val_b), "}");
+    if(selector == NULL) {
+        AppError("bson new selector failed, %s:%s,%s:%d", select_a, val_a, select_b, val_b);
         return -1;
     }
     return _DBDel(handle, db_name, table, selector);

@@ -76,6 +76,7 @@ typedef struct {
 } OSDConfig;
 
 static OSDConfig config = {0};
+static ShareParams share_params = {0};
 static void Nv12pSetRect(int x, int y, int w, int h, Packet* pkt) {
     int img_w = pkt->_params.width;
     int img_h = pkt->_params.height;
@@ -567,8 +568,9 @@ static int FontInit(char* params) {
 }
 
 extern "C" int OSDInit(ElementData* data, char* params) {
+    share_params = GlobalConfig();
     strncpy(data->input_name[0], "osd_input", sizeof(data->input_name[0]));
-    data->queue_len = GetIntValFromFile(CONFIG_FILE, "video", "queue_len");
+    data->queue_len = GetIntValFromFile(share_params.config_file, "video", "queue_len");
     if(data->queue_len < 0) {
         data->queue_len = 50;
     }

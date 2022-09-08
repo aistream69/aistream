@@ -90,7 +90,7 @@ void ObjParams::StartHttpfileTask(void) {
     SlaveParams* slave = media->GetSlave();
     Pipeline* pipe = slave->GetPipe();;
     ConfigParams* config = media->GetConfig();
-    const char* filename = CONFIG_FILE;
+    const char* filename = media->config_file.c_str();
 
     // wait output init from master
     while(config->GetOutput() == nullptr) {

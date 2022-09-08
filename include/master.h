@@ -36,7 +36,7 @@ typedef struct {
 typedef struct {
     char name[64];
     char input[32];
-    int http_file_port;
+    int port;
 } TaskCfg;
 
 class SlaveParam : public std::enable_shared_from_this<SlaveParam> {
@@ -58,6 +58,7 @@ public:
     int offline_cnt;
     std::vector<int> obj_id_vec; // if async, use mutex
     std::unique_ptr<char[]> params;
+    std::vector<TaskCfg> httpf_task;
 };
 
 class MObjParam : public std::enable_shared_from_this<MObjParam> {

@@ -58,8 +58,7 @@ typedef struct {
     std::unique_ptr<char[]> user_data;
 } HttpFilee;
 
-static NginxParams nginx;
-static char local_ip[128] = {0};
+static ShareParams share_params = {0};
 static int SendHttpReply2(struct evhttp_request* req, int code, const char* url) {
     struct evbuffer* evb;
     evb = evbuffer_new();
@@ -79,21 +78,11 @@ static int SendHttpReply2(struct evhttp_request* req, int code, const char* url)
 }
 
 extern "C" int HttpInit(ElementData* data, char* params) {
-    data->queue_len = GetIntValFromFile(CONFIG_FILE, "img", "queue_len");
+    share_params = GlobalConfig();
+    data->queue_len = GetIntValFromFile(share_params.config_file, "img", "queue_len");
     if(data->queue_len < 0) {
         data->queue_len = 50;
     }
-    if(strlen(local_ip) > 0) {
-        return 0;
-    }
-    auto localhost = GetStrValFromFile(CONFIG_FILE, "system", "localhost");
-    if(localhost != nullptr) {
-        strncpy(local_ip, localhost.get(), sizeof(local_ip));
-    }
-    else {
-        GetLocalIp(local_ip);
-    }
-    NginxInit(nginx);
     return 0;
 }
 
@@ -303,12 +292,13 @@ static void SaveFile(HttpFilee& http_file, HttpServer* http, char url[URL_LEN]) 
 
     gettimeofday(&tv, NULL);
     localtime_r(&tv.tv_sec, &_time);
-    snprintf(date, sizeof(date), "%d%02d%02d", _time.tm_year + 1900, _time.tm_mon + 1, _time.tm_mday);
+    snprintf(date, sizeof(date), "%d%02d%02d", 
+            _time.tm_year + 1900, _time.tm_mon + 1, _time.tm_mday);
     snprintf(url, URL_LEN, "%s/image/%s/%d/%ld_%ld.jpg", 
-            nginx.workdir, date, http->id, tv.tv_sec, tv.tv_usec);
+            share_params.nginx.workdir, date, http->id, tv.tv_sec, tv.tv_usec);
     WriteFile(url, http_file.buf, http_file.size, "wb");
-    snprintf(url, URL_LEN, "http://%s:%d/image/%s/%d/%ld_%ld.jpg", 
-            local_ip, nginx.http_port, date, http->id, tv.tv_sec, tv.tv_usec);
+    snprintf(url, URL_LEN, "http://%s:%d/image/%s/%d/%ld_%ld.jpg", share_params.local_ip, 
+            share_params.nginx.http_port, date, http->id, tv.tv_sec, tv.tv_usec);
 }
 
 static void HttpRequest(struct evhttp_request* req, void* arg) {
@@ -432,8 +422,8 @@ extern "C" IHandle HttpStart(int channel, char* params) {
     }
     HttpServer* http = new HttpServer();
     http->id = channel;
-    http->queue_len_max = GetIntValFromFile(CONFIG_FILE, "img", "queue_len");
-    http->timeout_sec = GetIntValFromFile(CONFIG_FILE, "system", "task_timeout_sec");
+    http->queue_len_max = GetIntValFromFile(share_params.config_file, "img", "queue_len");
+    http->timeout_sec = GetIntValFromFile(share_params.config_file, "system", "task_timeout_sec");
     if(http->timeout_sec < 0) {
         http->timeout_sec = 10;
     }

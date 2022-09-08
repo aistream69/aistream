@@ -18,25 +18,24 @@
 MediaServer::MediaServer(void) {
     running = 1;
     system_init = 0;
+    config_file = "cfg/config.json";
     config = new ConfigParams(this);
     obj_params = new ObjParams(this);
-    db = new DbParams(this);
+    UpdateTime();
 }
 
 MediaServer::~MediaServer(void) {
 }
 
-static void UpdateTime(MediaServer* media) {
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    media->now_sec = tv.tv_sec;
-}
-
-void MediaServer::Run(void) {
+void MediaServer::Run(const char* cfg) {
     bool ret;
-    ret = config->Read(CONFIG_FILE);
+    if(cfg != NULL) {
+        config_file = cfg;
+    }
+    ret = config->Read(config_file.c_str());
     assert(ret == true);
     AppDebug("master_enable:%d, slave_enable:%d", config->MasterEnable(), config->SlaveEnable());
+    db = new DbParams(this);
     if(config->SlaveEnable()) {
         slave = new SlaveParams(this);
         slave->Start();
@@ -50,8 +49,14 @@ void MediaServer::Run(void) {
             running = 0;
             break;
         }
-        UpdateTime(this);
+        UpdateTime();
         sleep(2);
     }
+}
+
+void MediaServer::UpdateTime(void) {
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    now_sec = tv.tv_sec;
 }
 
