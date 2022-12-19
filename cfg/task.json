@@ -24,6 +24,11 @@
       "name": "yolov3",
       "input": "img",
       "config": "./samples/yolov3.json"
+    },
+    {
+      "name": "bert",
+      "input": "text",
+      "config": "./samples/bert_cpu.json"
     }
   ]
 }

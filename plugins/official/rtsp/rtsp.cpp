@@ -1,7 +1,7 @@
 /****************************************************************************************
  * Copyright (C) 2021 aistream <aistream@yeah.net>
  *
- * Licensed under the BSD 3-Clause License (the "License"); you may not use this 
+ * Licensed under the BSD 3-Clause License (the "License"); you may not use this
  * file except in compliance with the License. You may obtain a copy of the License at
  *
  * https://opensource.org/licenses/BSD-3-Clause
@@ -24,190 +24,215 @@
 #include "log.h"
 
 typedef struct {
-    int id;
-    int frame_id;
-    std::mutex mtx;
-    std::condition_variable condition;
-    std::queue<Packet*> _queue;
-    RtspPlayer player;
-    int queue_len_max;
-    std::thread* t;
-    long int rtsp_beat;
-    int running;
-} RtspParams;
+  int id;
+  int frame_id;
+  std::mutex mtx;
+  std::condition_variable condition;
+  std::queue<Packet*> _queue;
+  RtspPlayer player;
+  int queue_len_max;
+  long int rtsp_beat;
+  int running;
+} ModuleObj;
 
-static long int _now_sec = 0;
-static ShareParams share_params = {0};
-static void RtspDaemon(RtspParams* rtsp_params) {
-    struct timeval tv;
-    RtspPlayer* player = &rtsp_params->player;
+typedef struct {
+  int init;
+  uint64_t now_sec;
+  ShareParams share_params;
+  std::mutex obj_mtx;
+  std::vector<ModuleObj*> objs;
+  std::thread* t;
+  int running;
+} ModuleParams;
 
+static ModuleParams module = {0};
+static void RtspDaemon(void) {
+  struct timeval tv;
+  while (module.running) {
     gettimeofday(&tv, NULL);
-    _now_sec = tv.tv_sec;
-    rtsp_params->rtsp_beat = _now_sec;
-    while(rtsp_params->running) {
-        gettimeofday(&tv, NULL);
-        _now_sec = tv.tv_sec;
-        if(_now_sec - rtsp_params->rtsp_beat > 15) {
-            AppWarn("id:%d,detect exception,restart it ...", rtsp_params->id);
-            if(player->playhandle != NULL) {
-                RtspPlayerStop(player);
-            }
-            if(RtspPlayerStart(player)) {
-                AppError("start play %s failed ", player->url);
-            }
-            rtsp_params->rtsp_beat = _now_sec;
+    module.now_sec = tv.tv_sec;
+    std::unique_lock<std::mutex> obj_lock(module.obj_mtx);
+    for (size_t i = 0; i < module.objs.size(); i ++) {
+      auto obj = module.objs[i];
+      RtspPlayer* player = &obj->player;
+      if (module.now_sec - obj->rtsp_beat > 15) {
+        AppWarn("id:%d,detect exception,restart it ...", obj->id);
+        if (player->playhandle != NULL) {
+          RtspPlayerStop(player);
         }
-        sleep(3);
+        if (RtspPlayerStart(player)) {
+          AppError("start play %s failed ", player->url);
+        }
+        obj->rtsp_beat = module.now_sec;
+      }
     }
-
-    AppDebug("run ok");
+    obj_lock.unlock();
+    sleep(3);
+  }
+  AppDebug("run ok");
 }
 
 static int RtspCallback(unsigned char *buf, int size, void *arg) {
-    HeadParams params = {0};
-    RtspParams* rtsp_params = (RtspParams* )arg;
+  HeadParams params = {0};
+  ModuleObj* obj = (ModuleObj* )arg;
 
-    //printf("rtsp,id:%d,frameid:%d,size:%d,%02x:%02x:%02x:%02x:%02x\n", 
-    //        rtsp_params->id, rtsp_params->frame_id, size, buf[0], buf[1], buf[2], buf[3], buf[4]);
-    params.frame_id = ++rtsp_params->frame_id;
-    std::unique_lock<std::mutex> lock(rtsp_params->mtx);
-    if(rtsp_params->_queue.size() < (size_t)rtsp_params->queue_len_max) {
-        auto _packet = new Packet(buf, size, &params);
-        rtsp_params->_queue.push(_packet);
-    }
-    else {
-        printf("warning,rtsp,id:%d, put to queue failed, quelen:%ld\n", 
-                rtsp_params->id, rtsp_params->_queue.size());
-    }
-    rtsp_params->condition.notify_one();
-    rtsp_params->rtsp_beat = _now_sec;
+  //printf("rtsp,id:%d,frameid:%d,size:%d,%02x:%02x:%02x:%02x:%02x\n",
+  //      obj->id, obj->frame_id, size, buf[0], buf[1], buf[2], buf[3], buf[4]);
+  params.type = (buf[4]&0x1f) != 0x1;
+  params.frame_id = ++obj->frame_id;
+  std::unique_lock<std::mutex> lock(obj->mtx);
+  if (obj->_queue.size() < (size_t)obj->queue_len_max) {
+    auto _packet = new Packet(buf, size, &params);
+    obj->_queue.push(_packet);
+  } else {
+    printf("warning,rtsp,id:%d, put to queue failed, quelen:%ld\n",
+           obj->id, obj->_queue.size());
+  }
+  obj->condition.notify_one();
+  obj->rtsp_beat = module.now_sec;
 
-    return 0;
+  return 0;
 }
 
 extern "C" int RtspInit(ElementData* data, char* params) {
-    share_params = GlobalConfig();
-    data->queue_len = GetIntValFromFile(share_params.config_file, "video", "queue_len");
-    if(data->queue_len < 0) {
-        data->queue_len = 50;
-    }
-    /*
-    data->sleep_usec = GetIntValFromFile(share_params.config_file, "obj", "rtsp", "sleep_usec");
-    if(data->sleep_usec < 0) {
-        data->sleep_usec = 20000;
-    }
-    */
-    return 0;
+  if (__sync_add_and_fetch(&module.init, 1) <= 1) {
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    module.now_sec = tv.tv_sec;
+    module.share_params = GlobalConfig();
+    module.t = new std::thread(&RtspDaemon);
+    module.running = 1;
+  }
+  const char* cfg_file = module.share_params.config_file;
+  data->queue_len = GetIntValFromFile(cfg_file, "video", "queue_len");
+  if (data->queue_len < 0) {
+    data->queue_len = 50;
+  }
+  return 0;
 }
 
 extern "C" IHandle RtspStart(int channel, char* params) {
-    if(params == NULL) {
-        AppWarn("params is null");
-        return NULL;
-    }
+  if (params == NULL) {
+    AppWarn("id:%d, params is null", channel);
+    return NULL;
+  }
+  int tcp_enable = GetIntValFromJson(params, "data", "tcp_enable");
+  tcp_enable = tcp_enable < 0 ? 0 : tcp_enable;
+  auto url = GetStrValFromJson(params, "data", "url");
+  if (url == nullptr) {
+    AppWarn("get url failed, %s", params);
+    return NULL;
+  }
+  ModuleObj* obj = new ModuleObj();
+  obj->id = channel;
+  obj->rtsp_beat = module.now_sec;
+  RtspPlayer* player = &obj->player;
+  player->cb = RtspCallback;
+  player->streamUsingTCP = tcp_enable;
+  const char* cfg_file = module.share_params.config_file;
+  player->buffersize = GetIntValFromFile(cfg_file, "video", "framesize_max");
+  player->buffersize = player->buffersize > 0 ? player->buffersize : 1024000;
+  strncpy((char *)player->url, url.get(), sizeof(player->url));
+  player->arg = obj;
+  if (RtspPlayerStart(player)) {
+    AppError("start play %s failed ", player->url);
+    delete obj;
+    return NULL;
+  }
+  obj->queue_len_max = GetIntValFromFile(cfg_file, "video", "queue_len");
+  obj->queue_len_max = obj->queue_len_max > 0 ? obj->queue_len_max : 50;
+  obj->running = 1;
+  std::unique_lock<std::mutex> obj_lock(module.obj_mtx);
+  module.objs.push_back(obj);
+  obj_lock.unlock();
 
-    int tcp_enable = GetIntValFromJson(params, "data", "tcp_enable");
-    tcp_enable = tcp_enable < 0 ? 0 : tcp_enable;
-    auto url = GetStrValFromJson(params, "data", "url");
-    if(url == nullptr) {
-        AppWarn("get url failed, %s", params);
-        return NULL;
-    }
-    RtspParams* rtsp_params = new RtspParams();
-    rtsp_params->id = channel;
-    RtspPlayer* player = &rtsp_params->player;
-    player->cb = RtspCallback;
-    player->streamUsingTCP = tcp_enable;
-    player->buffersize = GetIntValFromFile(share_params.config_file, "video", "framesize_max");
-    player->buffersize = player->buffersize > 0 ? player->buffersize : 1024000;
-    strncpy((char *)player->url, url.get(), sizeof(player->url));
-    player->arg = rtsp_params;
-    if(RtspPlayerStart(player)) {
-        AppError("start play %s failed ", player->url);
-        delete rtsp_params;
-        return NULL;
-    }
-    rtsp_params->queue_len_max = GetIntValFromFile(share_params.config_file, "video", "queue_len");
-    rtsp_params->queue_len_max = rtsp_params->queue_len_max > 0 ? rtsp_params->queue_len_max : 50;
-    rtsp_params->running = 1;
-    rtsp_params->t = new std::thread(&RtspDaemon, rtsp_params);
-
-    return rtsp_params;
+  return obj;
 }
 
 extern "C" int RtspProcess(IHandle handle, TensorData* data) {
-    RtspParams* rtsp_params = (RtspParams*)handle;
-    std::unique_lock<std::mutex> lock(rtsp_params->mtx);
-    rtsp_params->condition.wait(lock, [rtsp_params] {
-            return !rtsp_params->_queue.empty() || !(rtsp_params->running);
-        });
-    if(!rtsp_params->running) {
-        return -1;
+  ModuleObj* obj = (ModuleObj*)handle;
+  std::unique_lock<std::mutex> lock(obj->mtx);
+  if (obj->_queue.empty()) {
+    obj->condition.wait(lock, [obj] {
+      return !obj->_queue.empty() || !(obj->running);
+    });
+    if (!obj->running) {
+      return -1;
     }
-    data->tensor_buf.output = rtsp_params->_queue.front();
-    rtsp_params->_queue.pop();
-    return 0;
+  }
+  data->tensor_buf.output = obj->_queue.front();
+  obj->_queue.pop();
+  return 0;
 }
 
 extern "C" int RtspStop(IHandle handle) {
-    RtspParams* rtsp_params = (RtspParams*)handle;
-    if(rtsp_params == NULL) {
-        AppWarn("rtsp params is null");
-        return -1;
+  ModuleObj* obj = (ModuleObj*)handle;
+  if (obj == NULL) {
+    AppWarn("id:%d, rtsp params is null", obj->id);
+    return -1;
+  }
+  obj->running = 0;
+  RtspPlayer *player = &obj->player;
+  if (player->playhandle != NULL) {
+    RtspPlayerStop(player);
+  }
+  std::unique_lock<std::mutex> lock(obj->mtx);
+  while (!obj->_queue.empty()) {
+    Packet* pkt = obj->_queue.front();
+    obj->_queue.pop();
+    if (pkt != nullptr) {
+      delete pkt;
     }
-    rtsp_params->running = 0;
-    if(rtsp_params->t != nullptr) {
-        if(rtsp_params->t->joinable()) {
-            rtsp_params->t->join();
-        }
-        delete rtsp_params->t;
-        rtsp_params->t = nullptr;
+  }
+  lock.unlock();
+  std::unique_lock<std::mutex> obj_lock(module.obj_mtx);
+  for (auto itr = module.objs.begin(); itr != module.objs.end(); ++itr) {
+    auto _obj = *itr;
+    if (_obj->id == obj->id) {
+      module.objs.erase(itr);
+      break;
     }
-    RtspPlayer *player = &rtsp_params->player;
-    if(player->playhandle != NULL) {
-        RtspPlayerStop(player);
-    }
-    std::unique_lock<std::mutex> lock(rtsp_params->mtx);
-    while(!rtsp_params->_queue.empty()) {
-        Packet* pkt = rtsp_params->_queue.front();
-        rtsp_params->_queue.pop();
-        if(pkt != nullptr) {
-            delete pkt;
-        }
-    }
-    lock.unlock();
-    delete rtsp_params;
-    return 0;
+  }
+  obj_lock.unlock();
+  delete obj;
+  return 0;
 }
 
 extern "C" int RtspNotify(IHandle handle) {
-    RtspParams* rtsp_params = (RtspParams*)handle;
-    if(rtsp_params == NULL) {
-        AppWarn("id:%d, player is null", rtsp_params->id);
-        return -1;
-    }
-    rtsp_params->running = 0;
-    std::unique_lock<std::mutex> lock(rtsp_params->mtx);
-    rtsp_params->condition.notify_all();
-    return 0;
+  ModuleObj* obj = (ModuleObj*)handle;
+  if (obj == NULL) {
+    AppWarn("id:%d, player is null", obj->id);
+    return -1;
+  }
+  obj->running = 0;
+  std::unique_lock<std::mutex> lock(obj->mtx);
+  obj->condition.notify_all();
+  return 0;
 }
 
 extern "C" int RtspRelease(void) {
-    return 0;
+  module.running = 0;
+  if (module.t != nullptr) {
+    if (module.t->joinable()) {
+      module.t->join();
+    }
+    delete module.t;
+    module.t = nullptr;
+  }
+  return 0;
 }
 
 extern "C" int DylibRegister(DLRegister** r, int& size) {
-    size = 1; // reserved
-    DLRegister* p = (DLRegister*)calloc(size, sizeof(DLRegister));
-    strncpy(p->name, "rtsp", sizeof(p->name));
-    p->init = "RtspInit";
-    p->start = "RtspStart";
-    p->process = "RtspProcess";
-    p->stop = "RtspStop";
-    p->notify = "RtspNotify";
-    p->release = "RtspRelease";
-    *r = p;
-    return 0;
+  size = 1; // reserved
+  DLRegister* p = (DLRegister*)calloc(size, sizeof(DLRegister));
+  strncpy(p->name, "rtsp", sizeof(p->name));
+  p->init = "RtspInit";
+  p->start = "RtspStart";
+  p->process = "RtspProcess";
+  p->stop = "RtspStop";
+  p->notify = "RtspNotify";
+  p->release = "RtspRelease";
+  *r = p;
+  return 0;
 }
 

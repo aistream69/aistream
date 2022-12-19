@@ -1,11 +1,21 @@
 
-set(CMAKE_CXX_FLAGS "-std=c++14 -Wall -O2 -rdynamic -Wno-deprecated-declarations -Wno-format-truncation")
-#set(CMAKE_CXX_FLAGS "-std=c++14 -Wall -g -rdynamic -Wno-deprecated-declarations -Wno-format-truncation")
+set(CMAKE_CXX_FLAGS "-std=c++17 -Wall -O2 -rdynamic -Wno-deprecated-declarations -Wno-format-truncation")
+#set(CMAKE_CXX_FLAGS "-std=c++17 -Wall -g -rdynamic -Wno-deprecated-declarations -Wno-format-truncation")
+add_compile_options(-fPIC)
 
 include_directories(
     "${PROJECT_ROOT_PATH}/include"
-    "${PROJECT_ROOT_PATH}/plugins/common"
     "${PROJECT_ROOT_PATH}/work/cjson/inc"
+    )
+
+include(${PROJECT_ROOT_PATH}/cmake/libtorch.cmake)
+add_subdirectory(bert/tokenizers)
+add_subdirectory(bert/ftokenizers)
+add_subdirectory(bert)
+add_dependencies(bertcpu libtorch cjson tokenizers ftokenizers)
+
+include_directories(
+    "${PROJECT_ROOT_PATH}/plugins/common"
     "${PROJECT_ROOT_PATH}/work/3rdparty/rtsp/release/inc"
     "${PROJECT_ROOT_PATH}/work/3rdparty/ffmpeg/release/include"
     "${PROJECT_ROOT_PATH}/work/3rdparty/rabbitmq/release/include"
@@ -21,8 +31,6 @@ link_directories(
     "${PROJECT_ROOT_PATH}/work/3rdparty/opencv/release/lib"
     "${PROJECT_ROOT_PATH}/work/3rdparty/freetype/release/lib"
     )
-
-add_compile_options(-fPIC)
 
 add_library(rtsp SHARED rtsp/rtsp.cpp)
 add_library(rtmp SHARED rtmp/rtmp.cpp)

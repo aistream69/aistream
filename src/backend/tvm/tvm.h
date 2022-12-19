@@ -1,7 +1,7 @@
 /****************************************************************************************
  * Copyright (C) 2021 aistream <aistream@yeah.net>
  *
- * Licensed under the BSD 3-Clause License (the "License"); you may not use this 
+ * Licensed under the BSD 3-Clause License (the "License"); you may not use this
  * file except in compliance with the License. You may obtain a copy of the License at
  *
  * https://opensource.org/licenses/BSD-3-Clause
@@ -22,10 +22,10 @@
 #include "framework.h"
 
 class Tvm : public Framework {
-public:
-    Tvm(void);
-    ~Tvm(void);
-private:
+ public:
+  Tvm(void);
+  ~Tvm(void);
+ private:
 };
 
 #endif

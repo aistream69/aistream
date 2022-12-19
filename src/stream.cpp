@@ -1,7 +1,7 @@
 /****************************************************************************************
  * Copyright (C) 2021 aistream <aistream@yeah.net>
  *
- * Licensed under the BSD 3-Clause License (the "License"); you may not use this 
+ * Licensed under the BSD 3-Clause License (the "License"); you may not use this
  * file except in compliance with the License. You may obtain a copy of the License at
  *
  * https://opensource.org/licenses/BSD-3-Clause
@@ -16,47 +16,47 @@
 #include "stream.h"
 
 MediaServer::MediaServer(void) {
-    running = 1;
-    system_init = 0;
-    config_file = "cfg/config.json";
-    config = new ConfigParams(this);
-    obj_params = new ObjParams(this);
-    UpdateTime();
+  running = 1;
+  system_init = 0;
+  config_file = "cfg/config.json";
+  config = new ConfigParams(this);
+  obj_params = new ObjParams(this);
+  UpdateTime();
 }
 
 MediaServer::~MediaServer(void) {
 }
 
 void MediaServer::Run(const char* cfg) {
-    bool ret;
-    if(cfg != NULL) {
-        config_file = cfg;
+  bool ret;
+  if (cfg != NULL) {
+    config_file = cfg;
+  }
+  ret = config->Read(config_file.c_str());
+  assert(ret == true);
+  AppDebug("master_enable:%d, slave_enable:%d", config->MasterEnable(), config->SlaveEnable());
+  db = new DbParams(this);
+  if (config->SlaveEnable()) {
+    slave = new SlaveParams(this);
+    slave->Start();
+  }
+  if (config->MasterEnable()) {
+    master = new MasterParams(this);
+    master->Start();
+  }
+  while (running) {
+    if (!access(DEBUG_STOP, F_OK)) {
+      running = 0;
+      break;
     }
-    ret = config->Read(config_file.c_str());
-    assert(ret == true);
-    AppDebug("master_enable:%d, slave_enable:%d", config->MasterEnable(), config->SlaveEnable());
-    db = new DbParams(this);
-    if(config->SlaveEnable()) {
-        slave = new SlaveParams(this);
-        slave->Start();
-    }
-    if(config->MasterEnable()) {
-        master = new MasterParams(this);
-        master->Start();
-    }
-    while(running) {
-        if(!access(DEBUG_STOP, F_OK)) {
-            running = 0;
-            break;
-        }
-        UpdateTime();
-        sleep(2);
-    }
+    UpdateTime();
+    sleep(2);
+  }
 }
 
 void MediaServer::UpdateTime(void) {
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    now_sec = tv.tv_sec;
+  struct timeval tv;
+  gettimeofday(&tv, NULL);
+  now_sec = tv.tv_sec;
 }
 

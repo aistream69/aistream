@@ -1,7 +1,7 @@
 /****************************************************************************************
  * Copyright (C) 2021 aistream <aistream@yeah.net>
  *
- * Licensed under the BSD 3-Clause License (the "License"); you may not use this 
+ * Licensed under the BSD 3-Clause License (the "License"); you may not use this
  * file except in compliance with the License. You may obtain a copy of the License at
  *
  * https://opensource.org/licenses/BSD-3-Clause
@@ -23,37 +23,53 @@
 #define URL_LEN 512
 
 typedef struct {
-    int http_port;
-    char workdir[URL_LEN];
+  int http_port;
+  char workdir[URL_LEN];
 } NginxParams;
 
 class MediaServer;
 class ConfigParams {
-public:
-    ConfigParams(MediaServer* _media);
-    ~ConfigParams(void);
-    bool Read(const char *cfg);
-    char* LocalIp(void) {return local_ip;}
-    int MasterEnable(void) {return master_enable;}
-    int SlaveEnable(void) {return slave_enable;}
-    int GetMRestPort(void) {return master_rest_port;}
-    int GetSRestPort(void) {return slave_rest_port;}
-    int GetObjMax(void) {return obj_max;}
-    int GetTaskTimeout(void) {return task_timeout_sec;}
-    void SetOutput(char *str);
-    auto GetOutput(void) {return out_params;}
-    int img_save_days;
-    NginxParams nginx;
-    MediaServer* media;
-private:
-    char local_ip[128];
-    int master_enable;
-    int slave_enable;
-    int master_rest_port;
-    int slave_rest_port;
-    int obj_max;
-    int task_timeout_sec;
-    std::shared_ptr<char> out_params;
+ public:
+  ConfigParams(MediaServer* _media);
+  ~ConfigParams(void);
+  bool Read(const char *cfg);
+  char* LocalIp(void) {
+    return local_ip;
+  }
+  int MasterEnable(void) {
+    return master_enable;
+  }
+  int SlaveEnable(void) {
+    return slave_enable;
+  }
+  int GetMRestPort(void) {
+    return master_rest_port;
+  }
+  int GetSRestPort(void) {
+    return slave_rest_port;
+  }
+  int GetObjMax(void) {
+    return obj_max;
+  }
+  int GetTaskTimeout(void) {
+    return task_timeout_sec;
+  }
+  void SetOutput(char *str);
+  auto GetOutput(void) {
+    return out_params;
+  }
+  int img_save_days;
+  NginxParams nginx;
+  MediaServer* media;
+ private:
+  char local_ip[128];
+  int master_enable;
+  int slave_enable;
+  int master_rest_port;
+  int slave_rest_port;
+  int obj_max;
+  int task_timeout_sec;
+  std::shared_ptr<char> out_params;
 };
 
 #endif

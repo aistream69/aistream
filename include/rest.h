@@ -1,7 +1,7 @@
 /****************************************************************************************
  * Copyright (C) 2021 aistream <aistream@yeah.net>
  *
- * Licensed under the BSD 3-Clause License (the "License"); you may not use this 
+ * Licensed under the BSD 3-Clause License (the "License"); you may not use this
  * file except in compliance with the License. You may obtain a copy of the License at
  *
  * https://opensource.org/licenses/BSD-3-Clause
@@ -32,9 +32,9 @@
 #define ACK_BODY_LEN    256
 
 typedef struct {
-    const char *url;
-    void (*cb)(struct evhttp_request *, void *);
-    void *arg;
+  const char *url;
+  void (*cb)(struct evhttp_request *, void *);
+  void *arg;
 } UrlMap;
 
 #define request_first_stage                         \
@@ -51,41 +51,51 @@ do {                                                \
 } while(0)
 
 typedef struct {
-    std::unique_ptr<char[]> buf;
-    void *arg;
+  std::unique_ptr<char[]> buf;
+  void *arg;
 } HttpAck;
 
 class MediaServer;
 class Restful {
-public:
-    Restful(MediaServer* _media);
-    ~Restful(void);
-    void Start(void);
-    virtual int GetPort(void) {return 8098;}
-    virtual UrlMap* GetUrl(void){return NULL;}
-    virtual const char* GetType(void){return "";}
-    MediaServer* media;
-private:
+ public:
+  Restful(MediaServer* _media);
+  ~Restful(void);
+  void Start(void);
+  virtual int GetPort(void) {
+    return 8098;
+  }
+  virtual UrlMap* GetUrl(void) {
+    return NULL;
+  }
+  virtual const char* GetType(void) {
+    return "";
+  }
+  MediaServer* media;
+ private:
 };
 
 class MasterRestful : public Restful {
-public:
-    MasterRestful(MediaServer* _media);
-    virtual int GetPort(void) {return port;}
-    virtual UrlMap* GetUrl(void);
-    virtual const char* GetType(void);
-private:
-    int port;
+ public:
+  MasterRestful(MediaServer* _media);
+  virtual int GetPort(void) {
+    return port;
+  }
+  virtual UrlMap* GetUrl(void);
+  virtual const char* GetType(void);
+ private:
+  int port;
 };
 
 class SlaveRestful : public Restful {
-public:
-    SlaveRestful(MediaServer* _media);
-    virtual int GetPort(void) {return port;}
-    virtual UrlMap* GetUrl(void);
-    virtual const char* GetType(void);
-private:
-    int port;
+ public:
+  SlaveRestful(MediaServer* _media);
+  virtual int GetPort(void) {
+    return port;
+  }
+  virtual UrlMap* GetUrl(void);
+  virtual const char* GetType(void);
+ private:
+  int port;
 };
 
 int HttpPost(const char* url, char* data, HttpAck* ack, int timeout_sec = 3);

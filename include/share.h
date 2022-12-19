@@ -1,7 +1,7 @@
 /****************************************************************************************
  * Copyright (C) 2021 aistream <aistream@yeah.net>
  *
- * Licensed under the BSD 3-Clause License (the "License"); you may not use this 
+ * Licensed under the BSD 3-Clause License (the "License"); you may not use this
  * file except in compliance with the License. You may obtain a copy of the License at
  *
  * https://opensource.org/licenses/BSD-3-Clause
@@ -23,19 +23,19 @@
 #include "config.h"
 
 typedef struct {
-    void *arga;
-    void *argb;
-    void *argc;
-    void *argd;
-    void *arge;
-    int  val;
+  void *arga;
+  void *argb;
+  void *argc;
+  void *argd;
+  void *arge;
+  int  val;
 } CommonParams;
 
 typedef struct {
-    char config_file[512];
-    char local_ip[128];
-    NginxParams nginx;
-    void* media;
+  char config_file[512];
+  char local_ip[128];
+  NginxParams nginx;
+  void* media;
 } ShareParams;
 
 void HangUp(void);
@@ -51,28 +51,28 @@ int GetFileSize(const char *filename);
 ShareParams GlobalConfig(ShareParams* params = NULL);
 int GetHttpFilePort(char* name, const char* config_file);
 void LibevntInit(void);
-int GetIntValFromJson(char *buf, 
-        const char *name1, const char *name2=NULL, const char *name3=NULL);
-int GetIntValFromFile(const char *filename, 
-        const char *name1, const char *name2=NULL, const char *name3=NULL);
+int GetIntValFromJson(char *buf,
+                      const char *name1, const char *name2=NULL, const char *name3=NULL);
+int GetIntValFromFile(const char *filename,
+                      const char *name1, const char *name2=NULL, const char *name3=NULL);
 double GetDoubleValFromJson(char *buf,
-        const char *name1, const char *name2=NULL, const char *name3=NULL);
-double GetDoubleValFromFile(const char *filename, 
-        const char *name1, const char *name2=NULL, const char *name3=NULL);
-std::unique_ptr<char[]> GetStrValFromJson(char *buf, 
-        const char *name1, const char *name2=NULL, const char *name3=NULL);
-std::unique_ptr<char[]> GetStrValFromFile(const char *filename, 
-        const char *name1, const char *name2=NULL, const char *name3=NULL);
-std::unique_ptr<char[]> GetObjBufFromJson(char *buf, 
-        const char *name1, const char *name2=NULL, const char *name3=NULL);
-std::unique_ptr<char[]> GetArrayBufFromJson(char *buf, int &size, 
-        const char *name1, const char *name2=NULL, const char *name3=NULL);
-std::unique_ptr<char[]> GetArrayBufFromFile(const char *filename, int &size, 
-        const char *name1, const char *name2=NULL, const char *name3=NULL);
-std::unique_ptr<char[]> AddStrJson(char *buf, const char *val, 
-        const char *name1, const char *name2=NULL, const char *name3=NULL);
+                            const char *name1, const char *name2=NULL, const char *name3=NULL);
+double GetDoubleValFromFile(const char *filename,
+                            const char *name1, const char *name2=NULL, const char *name3=NULL);
+std::unique_ptr<char[]> GetStrValFromJson(char *buf,
+    const char *name1, const char *name2=NULL, const char *name3=NULL);
+std::unique_ptr<char[]> GetStrValFromFile(const char *filename,
+    const char *name1, const char *name2=NULL, const char *name3=NULL);
+std::unique_ptr<char[]> GetObjBufFromJson(char *buf,
+    const char *name1, const char *name2=NULL, const char *name3=NULL);
+std::unique_ptr<char[]> GetArrayBufFromJson(char *buf, int &size,
+    const char *name1, const char *name2=NULL, const char *name3=NULL);
+std::unique_ptr<char[]> GetArrayBufFromFile(const char *filename, int &size,
+    const char *name1, const char *name2=NULL, const char *name3=NULL);
+std::unique_ptr<char[]> AddStrJson(char *buf, const char *val,
+                                   const char *name1, const char *name2=NULL, const char *name3=NULL);
 std::unique_ptr<char[]> DelJsonObj(char *buf,
-        const char *name1, const char *name2=NULL, const char *name3=NULL);
+                                   const char *name1, const char *name2=NULL, const char *name3=NULL);
 std::unique_ptr<char[]> GetBufFromArray(char *buf, int index);
 
 #endif

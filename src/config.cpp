@@ -1,7 +1,7 @@
 /****************************************************************************************
  * Copyright (C) 2021 aistream <aistream@yeah.net>
  *
- * Licensed under the BSD 3-Clause License (the "License"); you may not use this 
+ * Licensed under the BSD 3-Clause License (the "License"); you may not use this
  * file except in compliance with the License. You may obtain a copy of the License at
  *
  * https://opensource.org/licenses/BSD-3-Clause
@@ -17,54 +17,53 @@
 
 ConfigParams::ConfigParams(MediaServer* _media)
   : media(_media) {
-      out_params = nullptr;
+  out_params = nullptr;
 }
 
 ConfigParams::~ConfigParams(void) {
 }
 
 bool ConfigParams::Read(const char *cfg) {
-    auto buf = ReadFile2Buf(cfg);
-    if(buf == nullptr) {
-        AppWarn("%s, ReadFile2Buf failed", cfg);
-        return false;
-    }
-    char *ptr = buf.get();
-    master_enable = GetIntValFromJson(ptr, "master", "enable");
-    slave_enable = GetIntValFromJson(ptr, "slave", "enable");
-    master_rest_port = GetIntValFromJson(ptr, "master", "rest_port");
-    slave_rest_port = GetIntValFromJson(ptr, "slave", "rest_port");
-    obj_max = GetIntValFromJson(ptr, "system", "obj_max");
-    task_timeout_sec = GetIntValFromJson(ptr, "system", "task_timeout_sec");
-    if(task_timeout_sec < 0) {
-        task_timeout_sec = 180;
-    }
-    img_save_days = GetIntValFromJson(ptr, "img", "save_days");
-    auto localhost = GetStrValFromJson(ptr, "system", "localhost");
-    if(localhost != nullptr) {
-        strncpy(local_ip, localhost.get(), sizeof(local_ip));
-    }
-    else {
-        GetLocalIp(local_ip);
-    }
-    NginxInit(nginx, cfg);
+  auto buf = ReadFile2Buf(cfg);
+  if (buf == nullptr) {
+    AppWarn("%s, ReadFile2Buf failed", cfg);
+    return false;
+  }
+  char *ptr = buf.get();
+  master_enable = GetIntValFromJson(ptr, "master", "enable");
+  slave_enable = GetIntValFromJson(ptr, "slave", "enable");
+  master_rest_port = GetIntValFromJson(ptr, "master", "rest_port");
+  slave_rest_port = GetIntValFromJson(ptr, "slave", "rest_port");
+  obj_max = GetIntValFromJson(ptr, "system", "obj_max");
+  task_timeout_sec = GetIntValFromJson(ptr, "system", "task_timeout_sec");
+  if (task_timeout_sec < 0) {
+    task_timeout_sec = 180;
+  }
+  img_save_days = GetIntValFromJson(ptr, "img", "save_days");
+  auto localhost = GetStrValFromJson(ptr, "system", "localhost");
+  if (localhost != nullptr) {
+    strncpy(local_ip, localhost.get(), sizeof(local_ip));
+  } else {
+    GetLocalIp(local_ip);
+  }
+  NginxInit(nginx, cfg);
 
-    // share config
-    ShareParams params;
-    strncpy(params.config_file, cfg, sizeof(params.config_file));
-    strncpy(params.local_ip, local_ip, sizeof(params.local_ip));
-    memcpy(&params.nginx, &nginx, sizeof(nginx));
-    params.media = media;
-    GlobalConfig(&params);
+  // share config
+  ShareParams params;
+  strncpy(params.config_file, cfg, sizeof(params.config_file));
+  strncpy(params.local_ip, local_ip, sizeof(params.local_ip));
+  memcpy(&params.nginx, &nginx, sizeof(nginx));
+  params.media = media;
+  GlobalConfig(&params);
 
-    AppDebug("nginx path:%s, http_port:%d", nginx.workdir, nginx.http_port);
-    
-    return true;
+  AppDebug("nginx path:%s, http_port:%d", nginx.workdir, nginx.http_port);
+
+  return true;
 }
 
 void ConfigParams::SetOutput(char *str) {
-    std::shared_ptr<char> p(new char[strlen(str)+1]);
-    strcpy(p.get(), str);
-    out_params = p;
+  std::shared_ptr<char> p(new char[strlen(str)+1]);
+  strcpy(p.get(), str);
+  out_params = p;
 }
 

@@ -1,0 +1,57 @@
+{
+    "pipeline": [
+        {
+            "name": "object",
+            "path": "cfg/object.json",
+            "input_map": [
+                {
+                    "key": "input",
+                    "val": "entry"
+                }
+            ],
+            "output_map": [
+                {
+                    "key": "output",
+                    "val": "frame"
+                }
+            ]
+        },
+        {
+            "name": "process",
+            "path": "./plugins/official/bert/libbertcpu.so",
+            "input_map": [
+                {
+                    "key": "text_input",
+                    "val": "frame"
+                }
+            ],
+            "output_map": [
+                {
+                    "key": "meta_data",
+                    "val": "json"
+                }
+            ],
+            "params": {
+              "model": "./data/model/bert/traced-bert-base-chinese.pt",
+              "vocab": "./data/model/bert/vocab.txt"
+            }
+        },
+        {
+            "name": "rabbitmq",
+            "path": "./plugins/official/librabbitmqq.so",
+            "input_map": [
+                {
+                    "key": "rabbitmq_input",
+                    "val": "json"
+                }
+            ],
+            "output_map": [
+                {
+                    "key": "rabbitmq_output",
+                    "val": "null"
+                }
+            ]
+        }
+    ]
+}
+

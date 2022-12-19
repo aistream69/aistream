@@ -1,7 +1,7 @@
 /****************************************************************************************
  * Copyright (C) 2021 aistream <aistream@yeah.net>
  *
- * Licensed under the BSD 3-Clause License (the "License"); you may not use this 
+ * Licensed under the BSD 3-Clause License (the "License"); you may not use this
  * file except in compliance with the License. You may obtain a copy of the License at
  *
  * https://opensource.org/licenses/BSD-3-Clause
@@ -31,20 +31,20 @@ typedef int (*DLNotify)(IHandle);
 typedef int (*DLRelease)(void);
 
 class DynamicLib : public Framework {
-public:
-    DynamicLib(void);
-    ~DynamicLib(void);
-    virtual int Init(char* path, ElementData* data, char* _params = NULL);
-    virtual int Start(int channel, char* _params = NULL);
-    virtual int Process(TensorData* data);
-    virtual int Stop(void);
-    virtual int Notify(void);
-    virtual int Release(void);
-private:
-    DLRegister *params;
-    void* dlhandle;
-    IHandle handle;
-    DLProcess process;
+ public:
+  DynamicLib(void);
+  ~DynamicLib(void);
+  virtual int Init(char* path, ElementData* data, char* _params = NULL);
+  virtual int Start(int channel, char* _params = NULL);
+  virtual int Process(TensorData* data);
+  virtual int Stop(void);
+  virtual int Notify(void);
+  virtual int Release(void);
+ private:
+  DLRegister *params;
+  void* dlhandle;
+  IHandle handle;
+  DLProcess process;
 };
 
 #endif

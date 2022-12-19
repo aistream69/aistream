@@ -1,8 +1,8 @@
 
 set(target aistream)
 
-set(CMAKE_CXX_FLAGS "-std=c++14 -Wall -O2 -rdynamic")
-#set(CMAKE_CXX_FLAGS "-std=c++14 -Wall -g -rdynamic")
+set(CMAKE_CXX_FLAGS "-std=c++17 -Wall -O2 -rdynamic")
+#set(CMAKE_CXX_FLAGS "-std=c++17 -Wall -g -rdynamic")
 
 set(CMAKE_SKIP_BUILD_RPATH FALSE)
 set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)

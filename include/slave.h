@@ -1,7 +1,7 @@
 /****************************************************************************************
  * Copyright (C) 2021 aistream <aistream@yeah.net>
  *
- * Licensed under the BSD 3-Clause License (the "License"); you may not use this 
+ * Licensed under the BSD 3-Clause License (the "License"); you may not use this
  * file except in compliance with the License. You may obtain a copy of the License at
  *
  * https://opensource.org/licenses/BSD-3-Clause
@@ -23,17 +23,19 @@
 
 class MediaServer;
 class SlaveParams {
-public:
-    SlaveParams(MediaServer* _media);
-    ~SlaveParams(void);
-    Pipeline* GetPipe(void) {return pipe;}
-    void Start(void);
-    MediaServer* media;
-    char _ip[128];
-    char _internet_ip[128];
-private:
-    void SlaveManager(void);
-    Pipeline* pipe;
+ public:
+  SlaveParams(MediaServer* _media);
+  ~SlaveParams(void);
+  Pipeline* GetPipe(void) {
+    return pipe;
+  }
+  void Start(void);
+  MediaServer* media;
+  char _ip[128];
+  char _internet_ip[128];
+ private:
+  void SlaveManager(void);
+  Pipeline* pipe;
 };
 
 #endif

@@ -43,6 +43,11 @@
                 "task": "yolov3",
                 "port" : 11608,
                 "threads": 3
+            },
+            {
+                "task": "bert",
+                "port" : 11610,
+                "threads": 3
             }
         ]
     }

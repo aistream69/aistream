@@ -1,7 +1,7 @@
 /****************************************************************************************
  * Copyright (C) 2021 aistream <aistream@yeah.net>
  *
- * Licensed under the BSD 3-Clause License (the "License"); you may not use this 
+ * Licensed under the BSD 3-Clause License (the "License"); you may not use this
  * file except in compliance with the License. You may obtain a copy of the License at
  *
  * https://opensource.org/licenses/BSD-3-Clause
@@ -37,246 +37,243 @@ extern "C" {
 #include "log.h"
 
 typedef struct {
-    int dec_init;
-    AVFrame *decFrame;
-    AVPacket decAvpkt;
-    AVCodecContext *decContex;
-    AVCodecParserContext *parser;
+  int dec_init;
+  AVFrame *decFrame;
+  AVPacket decAvpkt;
+  AVCodecContext *decContex;
+  AVCodecParserContext *parser;
 } FFmpegParam;
 
 typedef struct {
-    int id;
-    int skip;
-    FFmpegParam *ffmpeg;
-    FrameParam rgb;
+  int id;
+  int skip;
+  FFmpegParam *ffmpeg;
+  FrameParam rgb;
 } DecodeParams;
 
 static ShareParams share_params = {0};
 static int InitFFmpeg(FFmpegParam *ffmpeg) {
-    int ret;
-    const AVCodec *codec;
-    av_init_packet(&(ffmpeg->decAvpkt));
-    codec = avcodec_find_decoder(AV_CODEC_ID_H264);
-    if(!codec) {
-        fprintf(stderr, "Codec not found\n");
-        return -1;
-    }
-    ffmpeg->decContex = avcodec_alloc_context3(codec);
-    if(!ffmpeg->decContex) {
-        fprintf(stderr, "Could not allocate video codec context\n");
-        return -1;
-    }
-    if(codec->capabilities & AV_CODEC_CAP_TRUNCATED)
-        ffmpeg->decContex->flags |= AV_CODEC_FLAG_TRUNCATED; // we do not send complete frames
-    //av_opt_set(ffmpeg->decContex->priv_data, "pix_fmt", AV_PIX_FMT_NV12, 0);
-    //ffmpeg->decContex->sw_pix_fmt = AV_PIX_FMT_NV12;
-    /* open it */
-    ret = avcodec_open2(ffmpeg->decContex, codec, NULL);
-    if(ret < 0) {
-        //fprintf(stderr, "Could not open codec, ret:%x, %s\n", ret, av_err2str(ret));
-        fprintf(stderr, "Could not open codec, ret:%x\n", ret);
-        return -1;
-    }
-    ffmpeg->decFrame = av_frame_alloc();
-    if(!ffmpeg->decFrame) {
-        fprintf(stderr, "Could not allocate video frame\n");
-        return -1;
-    }
-    ffmpeg->parser = av_parser_init(codec->id);
-    if(!ffmpeg->parser) {
-        fprintf(stderr, "parser not found\n");
-        return -1;
-    }
-    return 0;
+  int ret;
+  const AVCodec *codec;
+  av_init_packet(&(ffmpeg->decAvpkt));
+  codec = avcodec_find_decoder(AV_CODEC_ID_H264);
+  if (!codec) {
+    fprintf(stderr, "Codec not found\n");
+    return -1;
+  }
+  ffmpeg->decContex = avcodec_alloc_context3(codec);
+  if (!ffmpeg->decContex) {
+    fprintf(stderr, "Could not allocate video codec context\n");
+    return -1;
+  }
+  if (codec->capabilities & AV_CODEC_CAP_TRUNCATED)
+    ffmpeg->decContex->flags |= AV_CODEC_FLAG_TRUNCATED; // we do not send complete frames
+  //av_opt_set(ffmpeg->decContex->priv_data, "pix_fmt", AV_PIX_FMT_NV12, 0);
+  //ffmpeg->decContex->sw_pix_fmt = AV_PIX_FMT_NV12;
+  /* open it */
+  ret = avcodec_open2(ffmpeg->decContex, codec, NULL);
+  if (ret < 0) {
+    //fprintf(stderr, "Could not open codec, ret:%x, %s\n", ret, av_err2str(ret));
+    fprintf(stderr, "Could not open codec, ret:%x\n", ret);
+    return -1;
+  }
+  ffmpeg->decFrame = av_frame_alloc();
+  if (!ffmpeg->decFrame) {
+    fprintf(stderr, "Could not allocate video frame\n");
+    return -1;
+  }
+  ffmpeg->parser = av_parser_init(codec->id);
+  if (!ffmpeg->parser) {
+    fprintf(stderr, "parser not found\n");
+    return -1;
+  }
+  return 0;
 }
 
 static int FreeFFmpeg(FFmpegParam *ffmpeg) {
-    if(ffmpeg->decContex != NULL) {
-        avcodec_close(ffmpeg->decContex);
-        avcodec_free_context(&(ffmpeg->decContex));
-        ffmpeg->decContex = NULL;
-    }
-    if(ffmpeg->decFrame != NULL) {
-        av_frame_free(&(ffmpeg->decFrame));
-        ffmpeg->decFrame = NULL;
-    }
-    if(ffmpeg->parser != NULL) {
-        av_parser_close(ffmpeg->parser);
-        ffmpeg->parser = NULL;
-    }
-    return 0;
+  if (ffmpeg->decContex != NULL) {
+    avcodec_close(ffmpeg->decContex);
+    avcodec_free_context(&(ffmpeg->decContex));
+    ffmpeg->decContex = NULL;
+  }
+  if (ffmpeg->decFrame != NULL) {
+    av_frame_free(&(ffmpeg->decFrame));
+    ffmpeg->decFrame = NULL;
+  }
+  if (ffmpeg->parser != NULL) {
+    av_parser_close(ffmpeg->parser);
+    ffmpeg->parser = NULL;
+  }
+  return 0;
 }
 
 static int InitWithFFmpeg(FrameParam* frame, FrameParam* rgb, FFmpegParam* ffmpeg, int id) {
-    int ret;
-    ffmpeg->decAvpkt.size = frame->size;
-    ffmpeg->decAvpkt.data = (uint8_t*)frame->buf;
-    ret = avcodec_send_packet(ffmpeg->decContex, &(ffmpeg->decAvpkt));
-    if(ret != 0) {
-        printf("avcodec_send_packet, id:%d, type:%02x, size:%d, ret:%x\n", 
-                id, frame->buf[4], frame->size, ret);
-        av_packet_unref(&(ffmpeg->decAvpkt));
-        return -1;
-    }
-    ret = avcodec_receive_frame(ffmpeg->decContex, ffmpeg->decFrame);
-    if(ret != 0) {
-        printf("avcodec_receive_frame err, id:%d, type:%02x, size:%d, ret:%x\n", 
-                id, frame->buf[4], frame->size, ret);
-        av_packet_unref(&(ffmpeg->decAvpkt));
-        return -1;
-    }
+  int ret;
+  ffmpeg->decAvpkt.size = frame->size;
+  ffmpeg->decAvpkt.data = (uint8_t*)frame->buf;
+  ret = avcodec_send_packet(ffmpeg->decContex, &(ffmpeg->decAvpkt));
+  if (ret != 0) {
+    printf("avcodec_send_packet, id:%d, type:%02x, size:%d, ret:%x\n",
+           id, frame->buf[4], frame->size, ret);
     av_packet_unref(&(ffmpeg->decAvpkt));
-    rgb->width = ffmpeg->decFrame->width;
-    rgb->height = ffmpeg->decFrame->height;
-    rgb->size = rgb->width*rgb->height*3;
-    rgb->buf = (char *)malloc(rgb->size);
-    return 0;
-    
+    return -1;
+  }
+  ret = avcodec_receive_frame(ffmpeg->decContex, ffmpeg->decFrame);
+  if (ret != 0) {
+    printf("avcodec_receive_frame err, id:%d, type:%02x, size:%d, ret:%x\n",
+           id, frame->buf[4], frame->size, ret);
+    av_packet_unref(&(ffmpeg->decAvpkt));
+    return -1;
+  }
+  av_packet_unref(&(ffmpeg->decAvpkt));
+  rgb->width = ffmpeg->decFrame->width;
+  rgb->height = ffmpeg->decFrame->height;
+  rgb->size = rgb->width*rgb->height*3;
+  rgb->buf = (char *)malloc(rgb->size);
+  return 0;
+
 }
 
 static int FFmpegDecoding(FrameParam* frame, FrameParam* rgb, FFmpegParam* ffmpeg, int id, bool enable) {
-    int num = 0;
-    int ret, len;
-    char *data = frame->buf;
-    int size = frame->size;
-    while(size > 0) {
-        len = av_parser_parse2(ffmpeg->parser, ffmpeg->decContex, 
-                &(ffmpeg->decAvpkt.data), &(ffmpeg->decAvpkt.size),
-                (const uint8_t *)data, size, AV_NOPTS_VALUE, AV_NOPTS_VALUE, 0);
-        if(len < 0) {
-            fprintf(stderr, "Error while parsing\n");
-            break;
-        }
-        data += len;
-        size -= len;
-        if(ffmpeg->decAvpkt.size <= 0) {
-            continue;
-        }
-        ffmpeg->decAvpkt.pts = frame->frame_id;
-        ret = avcodec_send_packet(ffmpeg->decContex, &(ffmpeg->decAvpkt));
-        if(ret != 0) {
-            printf("avcodec_send_packet, id:%d, ret:%x\n", id, ret);
-            av_packet_unref(&(ffmpeg->decAvpkt));
-            continue;
-        }
-        while(ret >= 0) {
-            ret = avcodec_receive_frame(ffmpeg->decContex, ffmpeg->decFrame);
-            if(!ret) {
-                if(enable) {
-                    ConvertYUV2RGB(ffmpeg->decFrame->data[0], ffmpeg->decFrame->data[1], 
-                            ffmpeg->decFrame->data[2], (unsigned char *)rgb->buf, 
-                            rgb->width, rgb->height, ffmpeg->decFrame->format);
-                    if(++num > 1) {
-                        AppWarn("id:%d, recv frame %d>1", id, num);
-                    }
-                }
-            }
-            else if(ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) {
-                break;
-            }
-            else {
-                printf("avcodec_receive_frame error:%x, id:%d\n", ret, id);
-                break;
-            }
-        }
-        av_packet_unref(&(ffmpeg->decAvpkt));
+  int num = 0;
+  int ret, len;
+  char *data = frame->buf;
+  int size = frame->size;
+  while (size > 0) {
+    len = av_parser_parse2(ffmpeg->parser, ffmpeg->decContex,
+                           &(ffmpeg->decAvpkt.data), &(ffmpeg->decAvpkt.size),
+                           (const uint8_t *)data, size, AV_NOPTS_VALUE, AV_NOPTS_VALUE, 0);
+    if (len < 0) {
+      fprintf(stderr, "Error while parsing\n");
+      break;
     }
-    return num;
+    data += len;
+    size -= len;
+    if (ffmpeg->decAvpkt.size <= 0) {
+      continue;
+    }
+    ffmpeg->decAvpkt.pts = frame->frame_id;
+    ret = avcodec_send_packet(ffmpeg->decContex, &(ffmpeg->decAvpkt));
+    if (ret != 0) {
+      printf("avcodec_send_packet, id:%d, ret:%x\n", id, ret);
+      av_packet_unref(&(ffmpeg->decAvpkt));
+      continue;
+    }
+    while (ret >= 0) {
+      ret = avcodec_receive_frame(ffmpeg->decContex, ffmpeg->decFrame);
+      if (!ret) {
+        if (enable) {
+          ConvertYUV2RGB(ffmpeg->decFrame->data[0], ffmpeg->decFrame->data[1],
+                         ffmpeg->decFrame->data[2], (unsigned char *)rgb->buf,
+                         rgb->width, rgb->height, ffmpeg->decFrame->format);
+          if (++num > 1) {
+            AppWarn("id:%d, recv frame %d>1", id, num);
+          }
+        }
+      } else if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) {
+        break;
+      } else {
+        printf("avcodec_receive_frame error:%x, id:%d\n", ret, id);
+        break;
+      }
+    }
+    av_packet_unref(&(ffmpeg->decAvpkt));
+  }
+  return num;
 }
 
 static int FFmpegDecode(FrameParam* frame, FrameParam* rgb, FFmpegParam* ffmpeg, int id, bool enable) {
-    if(ffmpeg->dec_init) {
-        return FFmpegDecoding(frame, rgb, ffmpeg, id, enable);
-    }
-    else if((frame->buf[4]&0x1f) != 1 && !InitWithFFmpeg(frame, rgb, ffmpeg, id)) {
-        ffmpeg->dec_init = 1;
-        AppDebug("find IDR ok, id:%d, %dx%d", id, rgb->width, rgb->height);
-        return FFmpegDecoding(frame, rgb, ffmpeg, id, enable);
-    }
-    return -1;
+  if (ffmpeg->dec_init) {
+    return FFmpegDecoding(frame, rgb, ffmpeg, id, enable);
+  } else if ((frame->buf[4]&0x1f) != 1 && !InitWithFFmpeg(frame, rgb, ffmpeg, id)) {
+    ffmpeg->dec_init = 1;
+    AppDebug("find IDR ok, id:%d, %dx%d", id, rgb->width, rgb->height);
+    return FFmpegDecoding(frame, rgb, ffmpeg, id, enable);
+  }
+  return -1;
 }
 
 extern "C" int DecodeInit(ElementData* data, char* params) {
-    share_params = GlobalConfig();
-    strncpy(data->input_name[0], "decode_input", sizeof(data->input_name[0]));
-    data->queue_len = GetIntValFromFile(share_params.config_file, "video", "rgb_queue_len");
-    if(data->queue_len < 0) {
-        data->queue_len = 10;
-    }
-    RGBInit();
-    FFmpegInit();
-    return 0;
+  share_params = GlobalConfig();
+  strncpy(data->input_name[0], "decode_input", sizeof(data->input_name[0]));
+  data->queue_len = GetIntValFromFile(share_params.config_file, "video", "rgb_queue_len");
+  if (data->queue_len < 0) {
+    data->queue_len = 10;
+  }
+  RGBInit();
+  FFmpegInit();
+  return 0;
 }
 
 extern "C" IHandle DecodeStart(int channel, char* params) {
-    DecodeParams* dec_params = (DecodeParams* )calloc(1, sizeof(DecodeParams));
-    dec_params->id = channel;
-    dec_params->ffmpeg = (FFmpegParam* )calloc(1, sizeof(FFmpegParam));
-    if(InitFFmpeg(dec_params->ffmpeg) != 0) {
-        AppWarn("init ffmpeg failed, id:%d", channel);
-        free(dec_params->ffmpeg);
-        free(dec_params);
-        return NULL;
-    }
-    dec_params->skip = GetIntValFromFile(share_params.config_file, "video", "rgb_skip");
-    if(dec_params->skip < 0) {
-        dec_params->skip = 1;
-    }
-    AppDebug("rgb skip : %d", dec_params->skip);
-    return dec_params;
+  DecodeParams* dec_params = (DecodeParams* )calloc(1, sizeof(DecodeParams));
+  dec_params->id = channel;
+  dec_params->ffmpeg = (FFmpegParam* )calloc(1, sizeof(FFmpegParam));
+  if (InitFFmpeg(dec_params->ffmpeg) != 0) {
+    AppWarn("init ffmpeg failed, id:%d", channel);
+    free(dec_params->ffmpeg);
+    free(dec_params);
+    return NULL;
+  }
+  dec_params->skip = GetIntValFromFile(share_params.config_file, "video", "rgb_skip");
+  if (dec_params->skip < 0) {
+    dec_params->skip = 1;
+  }
+  AppDebug("rgb skip : %d", dec_params->skip);
+  return dec_params;
 }
 
 extern "C" int DecodeProcess(IHandle handle, TensorData* data) {
-    DecodeParams* dec_params = (DecodeParams* )handle;
-    FrameParam* rgb = &dec_params->rgb;
+  DecodeParams* dec_params = (DecodeParams* )handle;
+  FrameParam* rgb = &dec_params->rgb;
 
-    FrameParam frame = {0};
-    auto pkt = data->tensor_buf.input[0];
-    frame.buf = pkt->_data;
-    frame.size = (int)pkt->_size;
-    frame.frame_id = pkt->_params.frame_id;
-    bool enable = pkt->_params.frame_id % dec_params->skip == 0;
-    if(FFmpegDecode(&frame, rgb, dec_params->ffmpeg, dec_params->id, enable) > 0) {
-        HeadParams params = {0};
-        params.frame_id = pkt->_params.frame_id;
-        params.width = rgb->width;
-        params.height = rgb->height;
-        auto _packet = new Packet(rgb->buf, rgb->size, &params);
-        data->tensor_buf.output = _packet;
-    }
-    return 0;
+  FrameParam frame = {0};
+  auto pkt = data->tensor_buf.input[0];
+  frame.buf = pkt->_data;
+  frame.size = (int)pkt->_size;
+  frame.frame_id = pkt->_params.frame_id;
+  bool enable = pkt->_params.frame_id % dec_params->skip == 0;
+  if (FFmpegDecode(&frame, rgb, dec_params->ffmpeg, dec_params->id, enable) > 0) {
+    HeadParams params = {0};
+    params.frame_id = pkt->_params.frame_id;
+    params.width = rgb->width;
+    params.height = rgb->height;
+    auto _packet = new Packet(rgb->buf, rgb->size, &params);
+    data->tensor_buf.output = _packet;
+  }
+  return 0;
 }
 
 extern "C" int DecodeStop(IHandle handle) {
-    DecodeParams* dec_params = (DecodeParams* )handle;
-    if(dec_params == NULL) {
-        AppWarn("id:%d, dec is null", dec_params->id);
-        return -1;
-    }
-    FrameParam* rgb = &dec_params->rgb;
-    if(rgb->buf != NULL) {
-        free(rgb->buf);
-    }
-    FreeFFmpeg(dec_params->ffmpeg);
-    free(dec_params->ffmpeg);
-    free(dec_params);
-    return 0;
+  DecodeParams* dec_params = (DecodeParams* )handle;
+  if (dec_params == NULL) {
+    AppWarn("id:%d, dec is null", dec_params->id);
+    return -1;
+  }
+  FrameParam* rgb = &dec_params->rgb;
+  if (rgb->buf != NULL) {
+    free(rgb->buf);
+  }
+  FreeFFmpeg(dec_params->ffmpeg);
+  free(dec_params->ffmpeg);
+  free(dec_params);
+  return 0;
 }
 
 extern "C" int DecodeRelease(void) {
-    return 0;
+  return 0;
 }
 
 extern "C" int DylibRegister(DLRegister** r, int& size) {
-    size = 1;
-    DLRegister* p = (DLRegister*)calloc(size, sizeof(DLRegister));
-    strncpy(p->name, "decode", sizeof(p->name));
-    p->init = "DecodeInit";
-    p->start = "DecodeStart";
-    p->process = "DecodeProcess";
-    p->stop = "DecodeStop";
-    p->release = "DecodeRelease";
-    *r = p;
-    return 0;
+  size = 1;
+  DLRegister* p = (DLRegister*)calloc(size, sizeof(DLRegister));
+  strncpy(p->name, "decode", sizeof(p->name));
+  p->init = "DecodeInit";
+  p->start = "DecodeStart";
+  p->process = "DecodeProcess";
+  p->stop = "DecodeStop";
+  p->release = "DecodeRelease";
+  *r = p;
+  return 0;
 }
 

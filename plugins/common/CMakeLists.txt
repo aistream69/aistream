@@ -1,5 +1,5 @@
 
-set(CMAKE_CXX_FLAGS "-std=c++14 -Wall -O2 -rdynamic -Wno-deprecated-declarations -Wno-format-truncation -Wno-sign-compare -Wno-unused-result")
+set(CMAKE_CXX_FLAGS "-std=c++17 -Wall -O2 -rdynamic -Wno-deprecated-declarations -Wno-format-truncation -Wno-sign-compare -Wno-unused-result")
 
 include_directories(
     "${PROJECT_ROOT_PATH}/work/3rdparty/ffmpeg/release/include"
@@ -15,7 +15,7 @@ add_library(common SHARED
     common.cpp 
     )
 
-add_dependencies(common ffmpeg)
+add_dependencies(common cjson ffmpeg)
 
 target_link_libraries(common
     -lavformat 

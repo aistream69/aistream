@@ -1,7 +1,7 @@
 /****************************************************************************************
  * Copyright (C) 2021 aistream <aistream@yeah.net>
  *
- * Licensed under the BSD 3-Clause License (the "License"); you may not use this 
+ * Licensed under the BSD 3-Clause License (the "License"); you may not use this
  * file except in compliance with the License. You may obtain a copy of the License at
  *
  * https://opensource.org/licenses/BSD-3-Clause
@@ -64,13 +64,13 @@
     do { \
         struct timeval tv; \
         struct tm _time; \
-        printf(APREFIX_YELLOW"warring, %s:%d, %s, "  format APREFIX_NONE"\n", \
+        printf(APREFIX_YELLOW"warning, %s:%d, %s, "  format APREFIX_NONE"\n", \
                 __filename(__FILE__), __LINE__, __func__, ## args); \
         gettimeofday(&tv, NULL); \
         localtime_r(&tv.tv_sec, &_time); \
         FILE *fp = fopen(DEBUG_LOG_FILE, "a+"); \
         if(fp != NULL) { \
-            fprintf(fp, "%d-%02d-%02d %02d:%02d:%02d.%03d, warring, pid:%d %s:%d,%s, " format "\n", \
+            fprintf(fp, "%d-%02d-%02d %02d:%02d:%02d.%03d, warning, pid:%d %s:%d,%s, " format "\n", \
                     _time.tm_year + 1900, _time.tm_mon + 1, _time.tm_mday, _time.tm_hour, _time.tm_min, \
                     _time.tm_sec,(int)tv.tv_usec/1000,getpid(), __filename(__FILE__), __LINE__, __func__, ##args); \
             fclose(fp); \

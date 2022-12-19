@@ -1,7 +1,7 @@
 /****************************************************************************************
  * Copyright (C) 2021 aistream <aistream@yeah.net>
  *
- * Licensed under the BSD 3-Clause License (the "License"); you may not use this 
+ * Licensed under the BSD 3-Clause License (the "License"); you may not use this
  * file except in compliance with the License. You may obtain a copy of the License at
  *
  * https://opensource.org/licenses/BSD-3-Clause
@@ -22,9 +22,9 @@
 #include "obj.h"
 
 class Gat1400 : public Object {
-public:
-    Gat1400(MediaServer* _media):Object(_media) {}
-private:
+ public:
+  Gat1400(MediaServer* _media):Object(_media) {}
+ private:
 };
 
 #endif

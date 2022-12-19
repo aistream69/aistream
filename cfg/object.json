@@ -7,12 +7,6 @@
     },
     "httpfile": {
         "lib": "plugins/official/libhttpfile.so"
-    },
-    "gat1400": {
-        "lib": "todo"
-    },
-    "text": {
-        "lib": "plugins/official/libtext.so"
     }
 }
 

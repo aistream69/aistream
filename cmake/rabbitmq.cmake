@@ -12,7 +12,7 @@ if(NOT EXISTS ${RABBITMQ_SRC_DIR})
     execute_process(COMMAND tar xzf ${RABBITMQ_PKG_DIR}/rabbitmq-c-0.11.0.tar.gz -C ${RABBITMQ_DIR})
 endif()
 
-set(CONFIGURE_CMD cd ${RABBITMQ_SRC_DIR} && mkdir -p build && cd build && cmake -DBUILD_TOOLS=OFF -DCMAKE_INSTALL_PREFIX=${RABBITMQ_DIR}/release ..)
+set(CONFIGURE_CMD cd ${RABBITMQ_SRC_DIR} && mkdir -p build && cd build && cmake -DBUILD_TOOLS=OFF -DBUILD_EXAMPLES=OFF -DCMAKE_INSTALL_PREFIX=${RABBITMQ_DIR}/release ..)
 set(BUILD_CMD cd ${RABBITMQ_SRC_DIR}/build && make -j4)
 set(INSTALL_CMD cd ${RABBITMQ_SRC_DIR}/build && make install)
 
