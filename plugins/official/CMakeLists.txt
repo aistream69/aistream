@@ -8,6 +8,15 @@ include_directories(
     "${PROJECT_ROOT_PATH}/work/cjson/inc"
     )
 
+add_subdirectory(grpc_test)
+add_subdirectory(triton)
+#add_dependencies(test_server grpc)
+#add_dependencies(test_client grpc)
+#add_dependencies(test_grpc_proto grpc)
+#add_dependencies(triton grpc)
+#add_dependencies(test_async_client grpc)
+#add_dependencies(hw_grpc_proto grpc)
+
 include(${PROJECT_ROOT_PATH}/cmake/libtorch.cmake)
 add_subdirectory(bert/tokenizers)
 add_subdirectory(bert/ftokenizers)

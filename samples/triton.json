@@ -1,0 +1,43 @@
+{
+    "pipeline": [
+        {
+            "name": "object",
+            "path": "cfg/object.json",
+            "input_map": [
+                {
+                    "key": "input",
+                    "val": "entry"
+                }
+            ],
+            "output_map": [
+                {
+                    "key": "output",
+                    "val": "frame"
+                }
+            ]
+        },
+        {
+            "name": "process",
+            "path": "./plugins/official/triton/libtriton.so",
+            "input_map": [
+                {
+                    "key": "input0",
+                    "val": "frame"
+                }
+            ],
+            "output_map": [
+                {
+                    "key": "output0",
+                    "val": "data"
+                }
+            ],
+            "params": {
+              "api": "grpc",
+              "model_repository": "./data/model/triton_model_repository",
+              "infer_port": 50051,
+              "cmd_port": 50052
+            }
+        }
+    ]
+}
+

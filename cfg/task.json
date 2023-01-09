@@ -29,6 +29,11 @@
       "name": "bert",
       "input": "text",
       "config": "./samples/bert_cpu.json"
+    },
+    {
+      "name": "triton",
+      "input": "img",
+      "config": "./samples/triton.json"
     }
   ]
 }

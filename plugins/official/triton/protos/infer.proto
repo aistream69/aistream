@@ -1,0 +1,71 @@
+
+syntax = "proto3";
+
+import "google/protobuf/empty.proto";
+
+option java_multiple_files = true;
+option java_package = "io.grpc.examples.infer";
+option java_outer_classname = "InferProto";
+option objc_class_prefix = "HLW";
+
+package triton;
+
+service ModelInfer {
+  rpc Infer (InferRequest) returns (InferResponse) {}
+}
+
+service Greeter {
+  rpc GetModelRepository (google.protobuf.Empty) returns (ModelRepos) {}
+  rpc UploadModel (LoadRequest) returns (google.protobuf.Empty) {}
+  rpc RemoveModel (LoadRequest) returns (google.protobuf.Empty) {}
+}
+
+enum DataType {
+  UNKNOWN = 0;
+  BYTE = 1;
+  BYTE2 = 2;
+  BYTE4 = 4;
+  BYTE8 = 8;
+}
+
+message Tensor {
+  string name = 1;
+  repeated int32 shape = 2;
+  DataType dtype = 3;
+  bytes data = 4;
+}
+
+message Batch {
+  repeated Tensor tensor = 1;
+}
+
+message InferRequest {
+  string name = 1;
+  uint32 request_id = 2;
+  repeated Batch inputs = 3;
+}
+
+message InferResponse {
+  string name = 1;
+  uint32 request_id = 2;
+  int32 error_code = 3;
+  string msg = 4;
+  repeated Batch outputs = 5;
+}
+
+message ModelStatus {
+  string name = 1;
+  int32 batch_size = 2;
+  repeated Tensor inputs = 3;
+  repeated Tensor outputs = 4;
+  int32 running = 5;
+}
+
+message ModelRepos {
+  repeated ModelStatus model = 1;
+}
+
+message LoadRequest {
+  string name = 1;
+}
+

@@ -28,6 +28,8 @@ message(STATUS "BUILD INFO:")
 message(STATUS "\tPlugins: ${PLUGINS}")
 message(STATUS "\tPrefix: ${CMAKE_INSTALL_PREFIX}")
 
+execute_process(COMMAND ${PROJECT_ROOT_PATH}/work/pkg/pre_build.sh)
+
 add_subdirectory(src)
 add_subdirectory(work/cjson)
 add_subdirectory(plugins)
@@ -41,5 +43,6 @@ include(cmake/eigen.cmake)
 include(cmake/rabbitmq.cmake)
 include(cmake/mongodb.cmake)
 include(cmake/freetype.cmake)
+#include(cmake/grpc.cmake)
 add_dependencies(ffmpeg x264)
 

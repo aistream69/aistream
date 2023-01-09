@@ -18,6 +18,7 @@
         "save_days": 7
     },
     "system": {
+        "dev": 0,
         "obj_max": 10000,
         "task_timeout_sec": 180,
         "nginx_path": "/usr/local/nginx",
@@ -48,6 +49,11 @@
                 "task": "bert",
                 "port" : 11610,
                 "threads": 3
+            },
+            {
+                "task": "triton",
+                "port" : 11612,
+                "threads": 1
             }
         ]
     }
