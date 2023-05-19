@@ -29,10 +29,11 @@ class TaskElement : public Element {
  public:
   TaskElement(std::shared_ptr<TaskParams> _task);
   ~TaskElement(void);
-  bool Start(void);
+  bool Start(bool sync_in);
   bool Stop(void);
   std::unique_ptr<Framework> framework;
   ElementData data;
+  std::mutex data_mtx;
   int exception_cnt;
  private:
   void ConnectElement(void);
@@ -72,6 +73,7 @@ class TaskParams : public std::enable_shared_from_this<TaskParams> {
   int Stop(bool sync = false);
   bool KeepAlive(void);
   void BeatAlive(MediaServer* media);
+  void ThreadSync(const char* name);
   std::shared_ptr<Object> GetTaskObj(void);
   std::vector<std::shared_ptr<TaskThread>> thread_vec;
   int running;
@@ -79,6 +81,7 @@ class TaskParams : public std::enable_shared_from_this<TaskParams> {
   char name[256];
   // obj thread should set this params in cycle correctly
   long int task_beat;
+  size_t thread_sync;
   std::weak_ptr<Object> obj;
   std::shared_ptr<char> params;
   std::shared_ptr<AlgTask> alg;

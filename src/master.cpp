@@ -1413,7 +1413,7 @@ static void UpdateObjTask(auto obj, MasterParams* master) {
     return;
   }
 
-  char buf[512];
+  char buf[POST_BUF_MAX];
   HttpAck ack = {nullptr};
   obj->m_task_mtx.lock();
   for (size_t i = 0; i < obj->m_task_vec.size(); i++) {

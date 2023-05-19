@@ -28,7 +28,7 @@
 #include <event2/dns.h>
 #include "log.h"
 
-#define POST_BUF_MAX    1024
+#define POST_BUF_MAX    1024*10
 #define ACK_BODY_LEN    256
 
 typedef struct {

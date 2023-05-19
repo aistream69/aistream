@@ -21,6 +21,7 @@ TaskParams::TaskParams(std::shared_ptr<Object> _obj)
   : obj(_obj) {
   running = 0;
   task_beat = 0;
+  thread_sync = 0;
   params = nullptr;
   alg = nullptr;
 }
@@ -56,7 +57,7 @@ int TaskParams::Start(void) {
     auto tt = thread_vec[i];
     tt->Start(shared_from_this());
   }
-  AppDebug("start task ok, id:%d,task:%s", _obj->GetId(), name);
+  //AppDebug("start task ok, id:%d,task:%s", _obj->GetId(), name);
 
   return 0;
 }
@@ -106,6 +107,21 @@ std::shared_ptr<Object> TaskParams::GetTaskObj(void) {
   return obj.lock();
 }
 
+void TaskParams::ThreadSync(const char* name) {
+  int cnt = 0;
+  __sync_add_and_fetch(&thread_sync, 1);
+  do {
+    if (thread_sync >= thread_vec.size()) {
+      break;
+    }
+    cnt ++;
+    if (cnt % 500 == 0) {
+      printf("info, %s, %d, thread sync ...\n", name, cnt);
+    }
+    usleep(20000);
+  } while(1);
+}
+
 TaskElement::TaskElement(std::shared_ptr<TaskParams> _task)
   : task(_task) {
   framework = nullptr;
@@ -141,7 +157,9 @@ void TaskElement::ConnectElement(void) {
           continue;
         }
         if (!strncmp(_map->val, output->val, sizeof(output->val))) {
+          std::unique_lock<std::mutex> lock(ele->data_mtx);
           ele->data.output.push_back(_queue);
+          lock.unlock();
           connect = true;
           break;
         }
@@ -154,9 +172,8 @@ void TaskElement::ConnectElement(void) {
   }
 }
 
-bool TaskElement::Start(void) {
+bool TaskElement::Start(bool sync_in) {
   char* path = GetPath();
-  char* framework_name = GetFramework();
   auto obj = task->GetTaskObj();
   assert(obj != nullptr);
   MediaServer* media = obj->media;
@@ -164,27 +181,19 @@ bool TaskElement::Start(void) {
 
   auto ele_params = GetParams();
   auto task_params = task->GetParams();
-  if (!strcmp(framework_name, "tvm")) {
-    AppDebug("TODO:tvm");
-  } else if (!strcmp(framework_name, "tensorrt")) {
-    AppDebug("TODO:tensorrt");
-  } else if (strlen(framework_name) == 0) {
-    framework = std::make_unique<DynamicLib>();
-    if (!strcmp(GetName(), "object")) {
-      path = obj->GetPath(path);
-      task_params = obj->GetParams();
-    }
-  } else {
-    AppWarn("unsupport framework:%s", framework_name);
+  framework = std::make_unique<DynamicLib>();
+  if (!strcmp(GetName(), "object")) {
+    path = obj->GetPath(path);
+    task_params = obj->GetParams();
   }
-  assert(framework != nullptr);
 
   //printf("task:%s, ele:%s,path:%s\n", task->GetTaskName(), GetName(), path);
   // params from json, for example: samples/face_detection.json
   char* params = ele_params != nullptr ? ele_params.get() : NULL;
   // ouput params from restful api
   auto out_params = config->GetOutput();
-  if (out_params != nullptr && !strcmp(GetName(), "rabbitmq")) {
+  if (out_params != nullptr &&
+     (!strcmp(GetName(), "rabbitmq") || !strcmp(GetName(), "output"))) {
     params = out_params.get();
   }
   if (framework->Init(path, &data, params) != 0) {
@@ -199,14 +208,18 @@ bool TaskElement::Start(void) {
     auto input = data.input[j];
     input->running = &task->running;
   }
-
-  params = task_params != nullptr ? task_params.get() : NULL;
-  if (framework->Start(obj->GetId(), params) != 0) {
-    AppWarn("framework start failed, id:%d, %s", obj->GetId(), path);
-    return false;
-  }
   // connect ele input to it's previous output
   ConnectElement();
+  // wait for object's element connecting to be done
+  if (sync_in) {
+    task->ThreadSync(GetName());
+  }
+  // plugin start
+  params = task_params != nullptr ? task_params.get() : NULL;
+  if (framework->Start(obj->GetId(), params) != 0) {
+    AppWarn("plugin start failed, id:%d, %s", obj->GetId(), path);
+    return false;
+  }
 
   return true;
 }
@@ -275,15 +288,21 @@ void TaskThread::ThreadFunc(void) {
   assert(obj != nullptr);
   MediaServer* media = obj->media;
 
+  const char* name = "null";
+  bool sync_in = t_ele_vec.size() == 1;
   for (size_t i = 0; i < t_ele_vec.size(); i ++) {
     auto ele = t_ele_vec[i];
-    if (!ele->Start()) {
+    if (!ele->Start(sync_in)) {
       task->running = 0;
       break;
     }
+    name = ele->GetName();
+  }
+  if (!sync_in) {
+    task->ThreadSync(name);
   }
 
-  while (task->running) {
+  while (task->running && media->running) {
     for (size_t i = 0; i < t_ele_vec.size(); i ++) {
       TensorData tensor;
       auto ele = t_ele_vec[i];
@@ -298,11 +317,11 @@ void TaskThread::ThreadFunc(void) {
       if (ele->framework->Process(&tensor) != 0) {
         break;
       }
-      for (size_t j = 0; j < ele->data.output.size() && 
+      for (int j = 0; j < tensor.tensor_buf.output_num && 
            tensor._out != nullptr; j ++) {
         auto output = ele->data.output[j];
         if (output == nullptr) {
-          AppWarn("id:%d,%s,%ld,shared_ptr exception",
+          AppWarn("id:%d,%s,%d,shared_ptr exception",
                   obj->GetId(), ele->GetName(), j);
           continue;
         }
@@ -310,7 +329,7 @@ void TaskThread::ThreadFunc(void) {
         if (output->_queue.size() >= (size_t)ele->data.queue_len) {
           output->_queue.pop();
           if (ele->exception_cnt++ % 200 == 0) {
-            printf("warning,id:%d,%s,output[%ld],%d,%d,queue is full\n",
+            printf("warning,id:%d,%s,output[%d],%d,%d,queue is full\n",
                    obj->GetId(), ele->GetName(), j,
                    ele->data.queue_len, ele->exception_cnt);
           }
